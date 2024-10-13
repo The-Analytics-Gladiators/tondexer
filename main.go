@@ -9,6 +9,10 @@ import (
 )
 
 const TransferNotificationCode = 1935855772
+const PaymentRequestCode = 4181439551
+
+const StonfiRouter = "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt"
+const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
 
 //TIP To run your code, right-click the code and select <b>Run</b>. Alternatively, click
 // the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.
@@ -20,28 +24,6 @@ func main() {
 
 	accounts := []string{"EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt"}
 
-	//api, _ := tonapi.New(tonapi.WithToken(consoleToken))
-
-	//api.GetBlockchainTransaction(context.Background(), tonapi.GetBlockchainTransactionParams { TransactionID: })
-
-	//t, _ := api.GetBlockchainAccountTransactions(context.Background(), tonapi.GetBlockchainAccountTransactionsParams{AccountID: "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt"})
-	//
-	//transactions := t.Transactions
-	//for i := range transactions {
-	//	transaction := transactions[i]
-	//	inMsg := transaction.InMsg.Value
-	//
-	//	fmt.Printf("%v: %v \n", inMsg.DecodedOpName, transaction.Hash)
-	//	//cl, _ := cell.FromBOC([]byte(inMsg.RawBody.Value))
-	//	hx, _ := hex.DecodeString(inMsg.RawBody.Value)
-	//	cl, _ := cell.FromBOC(hx)
-	//
-	//	msgCode := cl.BeginParse().MustLoadUInt(32)
-	//
-	//	//cl, _ := cell.FromBOC(inMsg.DecodedBody)
-	//	fmt.Printf("%v \n", msgCode)
-	//}
-	//client, _ := tonapi.New(tonapi.WithToken(consoleToken))
 	client, _ := tonapi.New()
 	tonClient := &TonClient{client}
 
@@ -65,6 +47,9 @@ func main() {
 		if msgCode == TransferNotificationCode {
 			transferNotification := ParseSwapTransferNotificationMessage(transaction.IO.In.AsInternal())
 			log.Printf("Message: %v \n ", transferNotification.String())
+		} else if msgCode == PaymentRequestCode {
+			paymentRequest := ParsePaymentRequestMessage(transaction.IO.In.AsInternal())
+			log.Printf("Message: %v \n ", paymentRequest.String())
 		}
 	}
 
@@ -75,6 +60,7 @@ type TonClient struct {
 }
 
 func (client *TonClient) FetchRawTransactionFromHashToChannel(data *tonapi.TransactionEventData, chnl chan *tonapi.GetRawTransactionsOK) {
+	log.Printf("Transaction data : %v \n", data)
 	if rawTransaction, e := client.FetchRawTransactionFromHash(data); e != nil {
 		log.Printf("Smth wrong with getting raw transaction, %v \n", e)
 	} else {
