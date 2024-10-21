@@ -1,4 +1,4 @@
-package main
+package core
 
 type Pair[K any, V any] struct {
 	First  K
@@ -49,6 +49,8 @@ func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, P
 	for notificationIndex, notification := range events.Notifications {
 		if !Contains(processedNotificationIndexes, notificationIndex) {
 			filteredNotifications = append(filteredNotifications, notification)
+		} else {
+			//log.Printf("Not matched %v", notification)
 		}
 	}
 
@@ -66,7 +68,6 @@ func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, P
 			PaymentsMatchCondition:                events.PaymentsMatchCondition,
 		},
 		relatedEvents
-
 }
 
 func Contains(slice []int, value int) bool {

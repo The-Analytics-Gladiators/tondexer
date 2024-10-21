@@ -1,41 +1,25 @@
-package main
+package stonfi
 
 import (
+	"TonArb/models"
 	"encoding/hex"
-	"fmt"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
+	"log"
 )
 
 const SwapOpCode = 630424929
+const SwapOkPaymentCode = 3326308581
+const SwapRefPaymentCode = 1158120768
 
-type SwapTransferNotification struct {
-	QueryId         uint64
-	Amount          uint64
-	Sender          *address.Address // from_user in contract
-	TokenWallet     *address.Address
-	MinOut          uint64
-	ToAddress       *address.Address
-	ReferralAddress *address.Address
-}
+const TransferNotificationCode = 1935855772
+const PaymentRequestCode = 4181439551
 
-type PaymentRequest struct {
-	QueryId       uint64
-	Owner         *address.Address
-	ExitCode      uint64
-	Amount0Out    uint64
-	Token0Address *address.Address
-	Amount1Out    uint64
-	Token1Address *address.Address
-}
+const StonfiRouter = "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt"
+const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
 
-func (pr *PaymentRequest) String() string {
-	return fmt.Sprintf("PaymentRequest(QueryId: %v, Owner: %v, ExitCode: %v, Amount0Out: %v, Token0Address: %v, Amount1Out: %v, Token1Address: %v)",
-		pr.QueryId, pr.Owner, pr.ExitCode, pr.Amount0Out, pr.Token0Address, pr.Amount1Out, pr.Token1Address)
-}
-
-func ParsePaymentRequestMessage(message *tlb.InternalMessage) *PaymentRequest {
+func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.PaymentRequest {
 	cll := message.Body.BeginParse()
 
 	msgCode := cll.MustLoadUInt(32) // Message code
@@ -47,6 +31,9 @@ func ParsePaymentRequestMessage(message *tlb.InternalMessage) *PaymentRequest {
 	owner := cll.MustLoadAddr()
 	exitCode := cll.MustLoadUInt(32)
 	//cll.MustLoadUInt(32)
+	if exitCode != SwapOkPaymentCode && exitCode != SwapRefPaymentCode {
+		return nil
+	}
 
 	ref := cll.MustLoadRef()
 	amount0Out := ref.MustLoadCoins()
@@ -54,7 +41,10 @@ func ParsePaymentRequestMessage(message *tlb.InternalMessage) *PaymentRequest {
 	amount1Out := ref.MustLoadCoins()
 	token1Address := ref.MustLoadAddr()
 
-	return &PaymentRequest{
+	return &models.PaymentRequest{
+		Hash:          rawTransactionWithHash.Hash,
+		Lt:            rawTransactionWithHash.Lt,
+		Time:          rawTransactionWithHash.Time,
 		QueryId:       queryId,
 		Owner:         owner,
 		ExitCode:      exitCode,
@@ -76,14 +66,7 @@ func ParseRawTransaction(transactions string) (*tlb.Transaction, error) {
 	return &tx, nil
 }
 
-func (tn *SwapTransferNotification) String() string {
-	return fmt.Sprintf("SwapTransferNotification(QueryId: %v, Amount: %v, Sender: %v, TokenWallet: %v, "+
-		"MinOut: %v, ToAddress: %v, ReferralAddress: %v)",
-		tn.QueryId, tn.Amount, tn.Sender, tn.TokenWallet,
-		tn.MinOut, tn.ToAddress, tn.ReferralAddress)
-}
-
-func ParseSwapTransferNotificationMessage(message *tlb.InternalMessage) *SwapTransferNotification {
+func ParseSwapTransferNotificationMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.SwapTransferNotification {
 	cll := message.Body.BeginParse()
 
 	msgCode := cll.MustLoadUInt(32) // Message code
@@ -112,7 +95,14 @@ func ParseSwapTransferNotificationMessage(message *tlb.InternalMessage) *SwapTra
 		refAddress = ref.MustLoadAddr()
 	}
 
-	return &SwapTransferNotification{
+	if !fromUser.Equals(toAddress) {
+		log.Printf("!!!!! Different From and Sender %v \n", rawTransactionWithHash.Hash)
+	}
+
+	return &models.SwapTransferNotification{
+		Hash:            rawTransactionWithHash.Hash,
+		Lt:              rawTransactionWithHash.Lt,
+		Time:            rawTransactionWithHash.Time,
 		QueryId:         queryId,
 		Amount:          jettonAmount,
 		Sender:          fromUser,
