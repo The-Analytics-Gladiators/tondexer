@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-func ToChModel(re *models.StonfiV1RelatedEvents) *models.SwapCH {
+func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *models.TokenInfo) *models.SwapCH {
 	if re.Notification == nil {
 		return nil
 	}
@@ -63,14 +63,45 @@ func ToChModel(re *models.StonfiV1RelatedEvents) *models.SwapCH {
 		hashes = append(hashes, referralSwap.Hash)
 	}
 
+	tokenInInfo := cache(tokenIn)
+
+	var tokenInUsdRate float64 = 0
+	var tokenInSymbol string = ""
+	var tokenInName string = ""
+
+	if tokenInInfo != nil {
+		tokenInUsdRate = tokenInInfo.TokenToUsd
+		tokenInSymbol = tokenInInfo.TokenSymbol
+		tokenInName = tokenInInfo.TokenName
+	}
+
+	tokenOutInfo := cache(tokenOut)
+
+	var tokenOutUsdRate float64 = 0
+	var tokenOutSymbol string = ""
+	var tokenOutName string = ""
+
+	if tokenInInfo != nil {
+		tokenOutUsdRate = tokenOutInfo.TokenToUsd
+		tokenOutSymbol = tokenOutInfo.TokenSymbol
+		tokenOutName = tokenOutInfo.TokenName
+	}
+
 	return &models.SwapCH{
+		Dex:             "StonfiV1",
 		Hashes:          hashes,
 		Lt:              re.Notification.Lt,
 		Time:            re.Notification.Time,
 		TokenIn:         tokenIn,
 		AmountIn:        amountIn,
+		TokenInSymbol:   tokenInSymbol,
+		TokenInName:     tokenInName,
+		TokenInUsdRate:  tokenInUsdRate,
 		TokenOut:        tokenOut,
 		AmountOut:       amountOut,
+		TokenOutSymbol:  tokenOutSymbol,
+		TokenOutName:    tokenOutName,
+		TokenOutUsdRate: tokenOutUsdRate,
 		MinAmountOut:    re.Notification.MinOut,
 		Sender:          re.Notification.ToAddress.String(),
 		ReferralAddress: referralAddress,

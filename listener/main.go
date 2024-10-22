@@ -4,17 +4,47 @@ import (
 	"TonArb/core"
 	"TonArb/persistence"
 	"TonArb/stonfi"
+	"TonArb/tonviewer"
 	"context"
 	"log"
 	"os"
 	"time"
 
 	"TonArb/models"
+	"github.com/eko/gocache/lib/v4/cache"
+	gocache_store "github.com/eko/gocache/store/go_cache/v4"
+	gocache "github.com/patrickmn/go-cache"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 )
 
 func main() {
+
+	gocacheClient := gocache.New(time.Hour, gocache.NoExpiration)
+
+	gocacheStore := gocache_store.NewGoCache(gocacheClient)
+
+	loadFunction := func(ctx context.Context, key any) (any, error) {
+		return tonviewer.FetchTokenInfo(key.(string))
+	}
+
+	// any because go-cache is supporting only any
+	cacheManager := cache.NewLoadable[any](loadFunction, gocacheStore)
+
+	//cacheManager.
+
+	wallets, e := persistence.ReadStonfiRouterWallets()
+	if e != nil {
+		panic(e)
+	}
+
+	for _, wallet := range wallets {
+		//Warming up
+		cacheManager.Get(context.Background(), wallet)
+	}
+
+	log.Printf("Read %v Stonfi RouterWallets", len(wallets))
+
 	consoleToken := os.Getenv("CONSOLE_TOKEN")
 	streamingApi := tonapi.NewStreamingAPI(tonapi.WithStreamingToken(consoleToken))
 
@@ -75,6 +105,14 @@ func main() {
 
 	swapChChannel := make(chan *models.SwapCH)
 
+	tokenInfoCacheFunction := func(token string) *models.TokenInfo {
+		info, e := cacheManager.Get(context.Background(), token)
+		if e != nil {
+			return nil
+		}
+		return info.(*models.TokenInfo)
+	}
+
 	go func() {
 		for {
 			select {
@@ -85,7 +123,7 @@ func main() {
 				events = newEvents
 
 				for _, relatedEvent := range relatedEvents {
-					chModel := stonfi.ToChModel(relatedEvent)
+					chModel := stonfi.ToChModel(relatedEvent, tokenInfoCacheFunction)
 					swapChChannel <- chModel
 				}
 
@@ -96,7 +134,8 @@ func main() {
 				events = newEvents
 
 				for _, relatedEvent := range relatedEvents {
-					chModel := stonfi.ToChModel(relatedEvent)
+
+					chModel := stonfi.ToChModel(relatedEvent, tokenInfoCacheFunction)
 					swapChChannel <- chModel
 				}
 			}
@@ -112,7 +151,10 @@ func main() {
 				modelsBatch = append(modelsBatch, model)
 			}
 		case <-ticker.C:
-			persistence.SaveToClickhouse(modelsBatch)
+			e := persistence.SaveToClickhouse(modelsBatch)
+			if e == nil {
+				modelsBatch = []*models.SwapCH{}
+			}
 		}
 	}
 }
