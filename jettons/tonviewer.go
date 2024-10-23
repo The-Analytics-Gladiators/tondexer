@@ -1,4 +1,4 @@
-package tonviewer
+package jettons
 
 import (
 	"TonArb/models"
@@ -61,7 +61,7 @@ func parseTokenInfo(root *html.Node) (*models.TokenInfo, error) {
 	}, nil
 }
 
-func FetchTokenInfo(token string) (*models.TokenInfo, error) {
+func TokenInfoFromJettonWalletPage(token string) (*models.TokenInfo, error) {
 	resp, e := http.Get("https://tonviewer.com/" + token)
 	if e != nil {
 		return nil, e

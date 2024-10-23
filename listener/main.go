@@ -2,10 +2,11 @@ package main
 
 import (
 	"TonArb/core"
+	"TonArb/jettons"
 	"TonArb/persistence"
 	"TonArb/stonfi"
-	"TonArb/tonviewer"
 	"context"
+	"github.com/tonkeeper/tonapi-go"
 	"log"
 	"os"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/eko/gocache/lib/v4/cache"
 	gocache_store "github.com/eko/gocache/store/go_cache/v4"
 	gocache "github.com/patrickmn/go-cache"
-	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 )
 
@@ -25,7 +25,7 @@ func main() {
 	gocacheStore := gocache_store.NewGoCache(gocacheClient)
 
 	loadFunction := func(ctx context.Context, key any) (any, error) {
-		return tonviewer.FetchTokenInfo(key.(string))
+		return jettons.TokenInfoFromJettonWalletPage(key.(string))
 	}
 
 	// any because go-cache is supporting only any

@@ -1,4 +1,4 @@
-package tonviewer
+package jettons
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestMMMToken(t *testing.T) {
-	tokenInfo, _ := FetchTokenInfo("EQB8A-pt27DSbPcbBIvpElgI383iZi3ImznQaR3mgi0wn7dY")
+	tokenInfo, _ := TokenInfoFromJettonWalletPage("EQB8A-pt27DSbPcbBIvpElgI383iZi3ImznQaR3mgi0wn7dY")
 
 	assert.Equal(t, "MMM", tokenInfo.TokenSymbol)
 	assert.Equal(t, "MMM2049", tokenInfo.TokenName)
@@ -14,7 +14,7 @@ func TestMMMToken(t *testing.T) {
 }
 
 func TestDogsToken(t *testing.T) {
-	tokenInfo, _ := FetchTokenInfo("EQAwbPGaCGCwLstAeRQvNMWaYC2r-83uEi6jGRcVIxS8sQz4")
+	tokenInfo, _ := TokenInfoFromJettonWalletPage("EQAwbPGaCGCwLstAeRQvNMWaYC2r-83uEi6jGRcVIxS8sQz4")
 
 	assert.Equal(t, "DOGS", tokenInfo.TokenSymbol)
 	assert.Equal(t, "Dogs", tokenInfo.TokenName)
@@ -22,7 +22,7 @@ func TestDogsToken(t *testing.T) {
 }
 
 func TestOrbitToken(t *testing.T) {
-	tokenInfo, _ := FetchTokenInfo("EQD3-WgJdOBbTui2nBAIy1Jq1yFTqVP9esGHHcTNZ1TEUVm4")
+	tokenInfo, _ := TokenInfoFromJettonWalletPage("EQD3-WgJdOBbTui2nBAIy1Jq1yFTqVP9esGHHcTNZ1TEUVm4")
 
 	assert.Equal(t, "oETH", tokenInfo.TokenSymbol)
 	assert.Equal(t, "Orbit Bridge Ton Ethereum", tokenInfo.TokenName)
@@ -30,7 +30,7 @@ func TestOrbitToken(t *testing.T) {
 }
 
 func TestGrimToken(t *testing.T) {
-	tokenInfo, _ := FetchTokenInfo("EQBRNSoB5gAoC_FV8T3qkLQVGNAa-_qSM-ILxekw7IiJvGVi")
+	tokenInfo, _ := TokenInfoFromJettonWalletPage("EQBRNSoB5gAoC_FV8T3qkLQVGNAa-_qSM-ILxekw7IiJvGVi")
 
 	assert.Equal(t, "GRIM", tokenInfo.TokenSymbol)
 	assert.Equal(t, "Grim Reaper", tokenInfo.TokenName)
