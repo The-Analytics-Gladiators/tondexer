@@ -1,12 +1,13 @@
 package stonfi
 
 import (
+	"TonArb/jettons"
 	"TonArb/models"
 	"log"
 	"slices"
 )
 
-func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *models.TokenInfo) *models.SwapCH {
+func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *jettons.ChainTokenInfo, rateCache func(string) *float64) *models.SwapCH {
 	if re.Notification == nil {
 		return nil
 	}
@@ -25,19 +26,19 @@ func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *models.Toke
 
 	hashes := []string{re.Notification.Hash, swapPayment.Hash}
 
-	var tokenIn string
+	var walletIn string
 	var amountIn uint64
-	var tokenOut string
+	var walletOut string
 	var amountOut uint64
 	if swapPayment.Amount0Out == 0 {
-		tokenIn = swapPayment.Token0Address.String()
+		walletIn = swapPayment.Token0Address.String()
 		amountIn = re.Notification.Amount
-		tokenOut = swapPayment.Token1Address.String()
+		walletOut = swapPayment.Token1Address.String()
 		amountOut = swapPayment.Amount1Out
 	} else {
-		tokenIn = swapPayment.Token1Address.String()
+		walletIn = swapPayment.Token1Address.String()
 		amountIn = re.Notification.Amount
-		tokenOut = swapPayment.Token0Address.String()
+		walletOut = swapPayment.Token0Address.String()
 		amountOut = swapPayment.Amount0Out
 	}
 
@@ -63,48 +64,64 @@ func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *models.Toke
 		hashes = append(hashes, referralSwap.Hash)
 	}
 
-	tokenInInfo := cache(tokenIn)
+	tokenInInfo := cache(walletIn)
 
 	var tokenInUsdRate float64 = 0
 	var tokenInSymbol string = ""
 	var tokenInName string = ""
+	var jettonMasterIn string = ""
+	var tokenInDecimals uint = 9
 
 	if tokenInInfo != nil {
-		tokenInUsdRate = tokenInInfo.TokenToUsd
-		tokenInSymbol = tokenInInfo.TokenSymbol
-		tokenInName = tokenInInfo.TokenName
+		rate := rateCache(tokenInInfo.JettonAddress)
+		if rate != nil {
+			tokenInUsdRate = *rate
+		}
+		tokenInSymbol = tokenInInfo.Symbol
+		tokenInName = tokenInInfo.Name
+		jettonMasterIn = tokenInInfo.JettonAddress
+		tokenInDecimals = tokenInInfo.Decimals
 	}
 
-	tokenOutInfo := cache(tokenOut)
+	tokenOutInfo := cache(walletOut)
 
 	var tokenOutUsdRate float64 = 0
 	var tokenOutSymbol string = ""
 	var tokenOutName string = ""
+	var jettonMasterOut string
+	var tokenOutDecimals uint = 9
 
-	if tokenInInfo != nil {
-		tokenOutUsdRate = tokenOutInfo.TokenToUsd
-		tokenOutSymbol = tokenOutInfo.TokenSymbol
-		tokenOutName = tokenOutInfo.TokenName
+	if tokenOutInfo != nil {
+		rate := rateCache(tokenOutInfo.JettonAddress)
+		if rate != nil {
+			tokenOutUsdRate = *rate
+		}
+		tokenOutSymbol = tokenOutInfo.Symbol
+		tokenOutName = tokenOutInfo.Name
+		jettonMasterOut = tokenOutInfo.JettonAddress
+		tokenOutDecimals = tokenOutInfo.Decimals
 	}
 
 	return &models.SwapCH{
-		Dex:             "StonfiV1",
-		Hashes:          hashes,
-		Lt:              re.Notification.Lt,
-		Time:            re.Notification.Time,
-		TokenIn:         tokenIn,
-		AmountIn:        amountIn,
-		TokenInSymbol:   tokenInSymbol,
-		TokenInName:     tokenInName,
-		TokenInUsdRate:  tokenInUsdRate,
-		TokenOut:        tokenOut,
-		AmountOut:       amountOut,
-		TokenOutSymbol:  tokenOutSymbol,
-		TokenOutName:    tokenOutName,
-		TokenOutUsdRate: tokenOutUsdRate,
-		MinAmountOut:    re.Notification.MinOut,
-		Sender:          re.Notification.ToAddress.String(),
-		ReferralAddress: referralAddress,
-		ReferralAmount:  referralAmount,
+		Dex:               "StonfiV1",
+		Hashes:            hashes,
+		Lt:                re.Notification.Lt,
+		Time:              re.Notification.Time,
+		JettonIn:          jettonMasterIn,
+		AmountIn:          amountIn,
+		JettonInSymbol:    tokenInSymbol,
+		JettonInName:      tokenInName,
+		JettonInUsdRate:   tokenInUsdRate,
+		JettonInDecimals:  uint64(tokenInDecimals),
+		JettonOut:         jettonMasterOut,
+		AmountOut:         amountOut,
+		JettonOutSymbol:   tokenOutSymbol,
+		JettonOutName:     tokenOutName,
+		JettonOutUsdRate:  tokenOutUsdRate,
+		JettonOutDecimals: uint64(tokenOutDecimals),
+		MinAmountOut:      re.Notification.MinOut,
+		Sender:            re.Notification.ToAddress.String(),
+		ReferralAddress:   referralAddress,
+		ReferralAmount:    referralAmount,
 	}
 }

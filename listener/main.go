@@ -12,38 +12,25 @@ import (
 	"time"
 
 	"TonArb/models"
-	"github.com/eko/gocache/lib/v4/cache"
-	gocache_store "github.com/eko/gocache/store/go_cache/v4"
-	gocache "github.com/patrickmn/go-cache"
 	"github.com/xssnick/tonutils-go/address"
 )
 
 func main() {
 
-	gocacheClient := gocache.New(time.Hour, gocache.NoExpiration)
-
-	gocacheStore := gocache_store.NewGoCache(gocacheClient)
-
-	loadFunction := func(ctx context.Context, key any) (any, error) {
-		return jettons.TokenInfoFromJettonWalletPage(key.(string))
-	}
-
-	// any because go-cache is supporting only any
-	cacheManager := cache.NewLoadable[any](loadFunction, gocacheStore)
-
-	//cacheManager.
-
-	wallets, e := persistence.ReadStonfiRouterWallets()
+	jettonInfoCache, e := jettons.InitJettonInfoCache()
 	if e != nil {
 		panic(e)
 	}
 
-	for _, wallet := range wallets {
-		//Warming up
-		cacheManager.Get(context.Background(), wallet)
+	walletMasterCache, e := jettons.InitWalletJettonCache()
+	if e != nil {
+		panic(e)
 	}
 
-	log.Printf("Read %v Stonfi RouterWallets", len(wallets))
+	usdRateCache, err := jettons.InitUsdRateCache()
+	if err != nil {
+		panic(e)
+	}
 
 	consoleToken := os.Getenv("CONSOLE_TOKEN")
 	streamingApi := tonapi.NewStreamingAPI(tonapi.WithStreamingToken(consoleToken))
@@ -75,7 +62,10 @@ func main() {
 		for rawTransactionWithHash := range rawTransactionWithHashChannel {
 			transaction, _ := stonfi.ParseRawTransaction(rawTransactionWithHash.RawTransaction.Transactions)
 			slice := transaction.IO.In.AsInternal().Body.BeginParse()
-			msgCode := slice.MustLoadUInt(32)
+			msgCode, e := slice.LoadUInt(32)
+			if e != nil {
+				continue
+			}
 			if msgCode == stonfi.TransferNotificationCode {
 				transferNotification := stonfi.ParseSwapTransferNotificationMessage(transaction.IO.In.AsInternal(), rawTransactionWithHash)
 				if transferNotification != nil {
@@ -105,12 +95,26 @@ func main() {
 
 	swapChChannel := make(chan *models.SwapCH)
 
-	tokenInfoCacheFunction := func(token string) *models.TokenInfo {
-		info, e := cacheManager.Get(context.Background(), token)
+	jettonInfoCacheFunction := func(wallet string) *jettons.ChainTokenInfo {
+		master, e := walletMasterCache.Get(context.Background(), wallet)
 		if e != nil {
 			return nil
 		}
-		return info.(*models.TokenInfo)
+
+		info, e := jettonInfoCache.Get(context.Background(), master.(*models.WalletJetton).Master)
+		if e != nil {
+			log.Printf("Unable to get jetton info for %v \n", master.(*models.WalletJetton).Master)
+			return nil
+		}
+		return info.(*jettons.ChainTokenInfo)
+	}
+
+	usdRateCacheFunction := func(wallet string) *float64 {
+		rate, e := usdRateCache.Get(context.Background(), wallet)
+		if e != nil {
+			return nil
+		}
+		return rate.(*float64)
 	}
 
 	go func() {
@@ -123,7 +127,7 @@ func main() {
 				events = newEvents
 
 				for _, relatedEvent := range relatedEvents {
-					chModel := stonfi.ToChModel(relatedEvent, tokenInfoCacheFunction)
+					chModel := stonfi.ToChModel(relatedEvent, jettonInfoCacheFunction, usdRateCacheFunction)
 					swapChChannel <- chModel
 				}
 
@@ -135,7 +139,7 @@ func main() {
 
 				for _, relatedEvent := range relatedEvents {
 
-					chModel := stonfi.ToChModel(relatedEvent, tokenInfoCacheFunction)
+					chModel := stonfi.ToChModel(relatedEvent, jettonInfoCacheFunction, usdRateCacheFunction)
 					swapChChannel <- chModel
 				}
 			}
@@ -151,7 +155,7 @@ func main() {
 				modelsBatch = append(modelsBatch, model)
 			}
 		case <-ticker.C:
-			e := persistence.SaveToClickhouse(modelsBatch)
+			e := persistence.SaveSwapsToClickhouse(modelsBatch)
 			if e == nil {
 				modelsBatch = []*models.SwapCH{}
 			}

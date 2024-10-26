@@ -36,3 +36,24 @@ func TestGrimToken(t *testing.T) {
 	assert.Equal(t, "Grim Reaper", tokenInfo.TokenName)
 	assert.GreaterOrEqual(t, tokenInfo.TokenToUsd, float64(0))
 }
+
+func TestMasterJUSDToken(t *testing.T) {
+	tokenInfo, _ := JettonInfoFromMasterPageRetries("EQBynBO23ywHy_CgarY9NK9FTz0yDsG82PtcbSTQgGoXwiuA", 4)
+
+	assert.Equal(t, "jUSDT", tokenInfo.TokenSymbol)
+	assert.Equal(t, "jUSDT", tokenInfo.TokenName)
+	assert.GreaterOrEqual(t, tokenInfo.TokenToUsd, 0.9)
+
+	assert.LessOrEqual(t, tokenInfo.TokenToUsd, 1.1)
+}
+
+//Empty page is returned by TonViewer
+//func TestMasterLKYToken(t *testing.T) {
+//	tokenInfo, _ := JettonInfoFromMasterPage("EQCIXQn940RNcOk6GzSorRSiA9WZC9xUz-6lyhl6Ap6na2sh")
+//
+//	assert.Equal(t, "jUSDT", tokenInfo.TokenSymbol)
+//	assert.Equal(t, "jUSDT", tokenInfo.TokenName)
+//	assert.GreaterOrEqual(t, tokenInfo.TokenToUsd, 0.9)
+//
+//	assert.LessOrEqual(t, tokenInfo.TokenToUsd, 1.1)
+//}

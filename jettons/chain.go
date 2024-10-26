@@ -1,22 +1,40 @@
 package jettons
 
 import (
+	"TonArb/core"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"github.com/sethvargo/go-retry"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 	cell2 "github.com/xssnick/tonutils-go/tvm/cell"
-	"io"
-	"net/http"
 	"strconv"
+	"time"
 )
 
-type TokenDefinition struct {
-	Name     string
-	Symbol   string
-	Decimals uint
+type ChainTokenInfo struct {
+	Name          string
+	Symbol        string
+	Decimals      uint
+	JettonAddress string
+}
+
+type TonApi struct {
+	Api *ton.APIClientWrapped
+}
+
+func (tonApi *TonApi) RunGetMethodRetries(ctx context.Context,
+	block *ton.BlockIDExt,
+	address *address.Address,
+	method string,
+	retries uint64) (*ton.ExecutionResult, error) {
+
+	backoff := retry.WithMaxRetries(retries, retry.NewExponential(1*time.Second))
+	return retry.DoValue(ctx, backoff, func(ctx context.Context) (*ton.ExecutionResult, error) {
+		return (*tonApi.Api).RunGetMethod(ctx, block, address, method)
+	})
 }
 
 func dictKey(key string) *cell2.Cell {
@@ -24,7 +42,7 @@ func dictKey(key string) *cell2.Cell {
 	return cell2.BeginCell().MustStoreSlice(bytes[:], uint(len(bytes)*8)).EndCell()
 }
 
-func TokenDefinitionByWallet(walletAddr string) (*TokenDefinition, error) {
+func GetTonApi() (*TonApi, error) {
 	client := liteclient.NewConnectionPool()
 
 	configUrl := "https://ton.org/global.config.json"
@@ -35,21 +53,55 @@ func TokenDefinitionByWallet(walletAddr string) (*TokenDefinition, error) {
 	a := ton.NewAPIClient(client)
 	api := a.WithRetry()
 
-	block, err := api.CurrentMasterchainInfo(context.Background())
+	wApi := TonApi{Api: &api}
+	return &wApi, nil
+}
+
+func (tonApi *TonApi) MasterByWallet(wallet string) (*address.Address, error) {
+	wApi, err := GetTonApi()
 	if err != nil {
 		return nil, err
 	}
 
-	addr := address.MustParseAddr(walletAddr)
+	block, err := (*wApi.Api).CurrentMasterchainInfo(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	res, err := wApi.RunGetMethodRetries(context.Background(), block, address.MustParseAddr(wallet), "get_wallet_data", 4)
 
-	res, err := api.RunGetMethod(context.Background(), block, addr, "get_wallet_data")
 	if err != nil {
 		return nil, err
 	}
 
 	jettonMasterAddress := res.MustSlice(2).MustLoadAddr()
 
-	resp, err := api.RunGetMethod(context.Background(), block, jettonMasterAddress, "get_jetton_data")
+	return jettonMasterAddress, nil
+}
+
+func JettonDefinitionByWalletRetry(walletAddr string, retries uint64) (*ChainTokenInfo, error) {
+	backoff := retry.WithMaxRetries(retries, retry.NewFibonacci(1*time.Second))
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*ChainTokenInfo, error) {
+		wallet, err := JettonDefinitionByWallet(walletAddr)
+		return wallet, retry.RetryableError(err)
+	})
+}
+
+func TokenDefinitionByMasterRetries(masterAddr string, retries uint64) (*ChainTokenInfo, error) {
+	backoff := retry.WithMaxRetries(retries, retry.NewFibonacci(1*time.Second))
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*ChainTokenInfo, error) {
+		jettonInfo, err := TokenDefinitionByMaster(masterAddr)
+		return jettonInfo, retry.RetryableError(err)
+	})
+}
+
+func TokenDefinitionByMaster(masterAddr string) (*ChainTokenInfo, error) {
+	wApi, err := GetTonApi()
+
+	block, err := (*wApi.Api).CurrentMasterchainInfo(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	resp, err := wApi.RunGetMethodRetries(context.Background(), block, address.MustParseAddr(masterAddr), "get_jetton_data", 3)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +109,9 @@ func TokenDefinitionByWallet(walletAddr string) (*TokenDefinition, error) {
 	cell := resp.MustCell(3)
 	cs := cell.BeginParse()
 
-	result := &TokenDefinition{}
+	result := &ChainTokenInfo{}
 	result.Decimals = 9 // Default
+	result.JettonAddress = masterAddr
 	uri := ""
 	if cs.MustLoadUInt(8) != 0 {
 		//OFFCHAIN
@@ -100,28 +153,26 @@ func TokenDefinitionByWallet(walletAddr string) (*TokenDefinition, error) {
 	}
 
 	if uri != "" {
-		if resp, e2 := http.Get(uri); e2 == nil {
-			defer resp.Body.Close()
+		body, e2 := core.GetRetry(context.Background(), uri, 3)
+		if e2 == nil {
 			var jsonMap map[string]any
 
-			if body, e3 := io.ReadAll(resp.Body); e3 == nil {
-				e4 := json.Unmarshal(body, &jsonMap)
-				if e4 == nil {
-					if name, exists := jsonMap["name"]; exists {
-						result.Name = name.(string)
-					}
-					if symbol, exists := jsonMap["symbol"]; exists {
-						result.Symbol = symbol.(string)
-					}
-					if decimalsString, exists := jsonMap["decimals"]; exists {
-						switch decimalsString.(type) {
-						case string:
-							if decimals, e5 := strconv.Atoi(decimalsString.(string)); e5 == nil {
-								result.Decimals = uint(decimals)
-							}
-						case float64:
-							result.Decimals = uint(decimalsString.(float64))
+			e4 := json.Unmarshal(body, &jsonMap)
+			if e4 == nil {
+				if name, exists := jsonMap["name"]; exists {
+					result.Name = name.(string)
+				}
+				if symbol, exists := jsonMap["symbol"]; exists {
+					result.Symbol = symbol.(string)
+				}
+				if decimalsString, exists := jsonMap["decimals"]; exists {
+					switch decimalsString.(type) {
+					case string:
+						if decimals, e5 := strconv.Atoi(decimalsString.(string)); e5 == nil {
+							result.Decimals = uint(decimals)
 						}
+					case float64:
+						result.Decimals = uint(decimalsString.(float64))
 					}
 				}
 			}
@@ -129,4 +180,20 @@ func TokenDefinitionByWallet(walletAddr string) (*TokenDefinition, error) {
 	}
 
 	return result, nil
+}
+
+func JettonDefinitionByWallet(walletAddr string) (*ChainTokenInfo, error) {
+	addr := address.MustParseAddr(walletAddr)
+
+	wApi, err := GetTonApi()
+	if err != nil {
+		return nil, err
+	}
+
+	jettonMasterAddress, err := wApi.MasterByWallet(addr.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return TokenDefinitionByMaster(jettonMasterAddress.String())
 }
