@@ -96,7 +96,7 @@ func InitJettonInfoCache() (*cache.LoadableCache[any], error) {
 }
 
 func InitUsdRateCache() (*cache.LoadableCache[any], error) {
-	return initCache[float64](
+	cacheManager, err := initCache[float64](
 		"",
 		func(key any) (*float64, error) {
 			jettonInfo, e := JettonInfoFromMasterPageRetries(key.(string), 4)
@@ -127,6 +127,64 @@ func InitUsdRateCache() (*cache.LoadableCache[any], error) {
 			return nil
 		},
 	)
+
+	ticker := time.NewTicker(1 * time.Minute)
+
+	go func() {
+		time.Sleep(1 * time.Hour)
+		for range ticker.C {
+			recalculateUsdRates(cacheManager)
+		}
+	}()
+
+	return cacheManager, err
+}
+
+func recalculateUsdRates(cacheManager *cache.LoadableCache[any]) {
+	jettons, e := persistence.ReadClickhouseJettons()
+	if e != nil {
+		log.Printf("Unable to read jetton from CH: %v \n", e)
+	}
+	log.Printf("Loaded %v jettons for rates updates \n", len(jettons))
+
+	writeBatch := func(jettonRates []*models.JettonRate) error {
+		return persistence.WriteToClickhouse(jettonRates, "jetton_rates", func(batch driver.Batch, m *models.JettonRate) error {
+			return batch.Append(
+				m.Time,
+				m.Name,
+				m.Symbol,
+				m.Master,
+				m.Decimals,
+				m.Rate,
+			)
+		})
+	}
+
+	var jettonRates []*models.JettonRate
+	for i, jetton := range jettons {
+		if jettonInfo, e := JettonInfoFromMasterPageRetries(jetton.Master, 4); e == nil {
+			if e := cacheManager.Set(context.Background(), jetton.Master, &jettonInfo.TokenToUsd); e != nil {
+				log.Printf("Unable to set jetton cache entry %v \n", jetton.Symbol)
+			}
+			jettonRate := &models.JettonRate{
+				Time:     time.Now(),
+				Name:     jetton.Name,
+				Symbol:   jetton.Symbol,
+				Master:   jetton.Master,
+				Decimals: jetton.Decimals,
+				Rate:     jettonInfo.TokenToUsd,
+			}
+			jettonRates = append(jettonRates, jettonRate)
+		}
+		if i%5 == 0 {
+			if e := writeBatch(jettonRates); e == nil {
+				jettonRates = []*models.JettonRate{}
+			} else {
+				log.Printf("Unable to write jetton rates %v \n", e)
+			}
+		}
+	}
+	writeBatch(jettonRates)
 }
 
 func InitWalletJettonCache() (*cache.LoadableCache[any], error) {
