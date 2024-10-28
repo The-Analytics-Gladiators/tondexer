@@ -23,4 +23,5 @@ type SwapCH struct {
 	Sender            string
 	ReferralAddress   string
 	ReferralAmount    uint64
+	CatchTime         time.Time
 }

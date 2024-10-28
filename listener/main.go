@@ -7,12 +7,12 @@ import (
 	"TonArb/stonfi"
 	"context"
 	"github.com/tonkeeper/tonapi-go"
+	"github.com/xssnick/tonutils-go/address"
 	"log"
 	"os"
 	"time"
 
 	"TonArb/models"
-	"github.com/xssnick/tonutils-go/address"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	accounts := []string{stonfi.StonfiRouter}
 
 	client, _ := tonapi.New(tonapi.WithToken(consoleToken))
-	tonClient := &TonClient{client}
+	tonClient := &core.TonClient{Client: client}
 
 	rawTransactionWithHashChannel := make(chan *models.RawTransactionWithHash)
 
@@ -80,9 +80,9 @@ func main() {
 		}
 	}()
 
-	events := &core.Events[models.SwapTransferNotification, models.PaymentRequest, int]{
-		ExpireCondition: func(tm *int) bool {
-			return int(time.Now().Unix())-*tm > 30
+	events := &core.Events[models.SwapTransferNotification, models.PaymentRequest, int64]{
+		ExpireCondition: func(tm *int64) bool {
+			return time.Now().Unix()-*tm > 30
 		},
 		NotificationWithPaymentMatchCondition: func(n *models.SwapTransferNotification, p *models.PaymentRequest) bool {
 			if n.QueryId != p.QueryId {
@@ -117,30 +117,75 @@ func main() {
 		return rate.(*float64)
 	}
 
+	nonMatchedHashesChannel := make(chan []string)
+
+	matchTicker := time.NewTicker(5 * time.Second)
+
 	go func() {
 		for {
 			select {
-			case notification := <-stonfiTransferNotificationsChannel:
-				pair := &core.Pair[*models.SwapTransferNotification, *int]{First: notification, Second: core.IntRef(int(time.Now().Unix()))}
-				events.Notifications = append(events.Notifications, pair)
-				newEvents, relatedEvents := match(events)
+			case <-matchTicker.C:
+				newEvents, relatedEvents, orphanEvents := match(events)
 				events = newEvents
 
+				var nonMatchedHashes []string
 				for _, relatedEvent := range relatedEvents {
 					chModel := stonfi.ToChModel(relatedEvent, jettonInfoCacheFunction, usdRateCacheFunction)
+					if chModel == nil {
+						if relatedEvent.Notification != nil {
+							nonMatchedHashes = append(nonMatchedHashes, relatedEvent.Notification.Hash)
+						}
+						hashes := core.Map(relatedEvent.Payments, func(t *models.PaymentRequest) string { return t.Hash })
+						nonMatchedHashes = append(nonMatchedHashes, hashes...)
+					}
 					swapChChannel <- chModel
 				}
 
+				nonMatchedHashes = append(nonMatchedHashes, core.Map(orphanEvents.Notifications, func(t *models.SwapTransferNotification) string { return t.Hash })...)
+				nonMatchedHashes = append(nonMatchedHashes, core.Map(orphanEvents.Payments, func(t *models.PaymentRequest) string { return t.Hash })...)
+
+				if len(nonMatchedHashes) > 0 {
+					go func() { nonMatchedHashesChannel <- nonMatchedHashes }()
+				}
+			case notification := <-stonfiTransferNotificationsChannel:
+				pair := &core.Pair[*models.SwapTransferNotification, *int64]{First: notification, Second: core.Int64Ref(notification.EventCatchTime.Unix())}
+				events.Notifications = append(events.Notifications, pair)
 			case a := <-stonfiPaymentRequestChannel:
-				pair := &core.Pair[*models.PaymentRequest, *int]{First: a, Second: core.IntRef(int(time.Now().Unix()))}
+				pair := &core.Pair[*models.PaymentRequest, *int64]{First: a, Second: core.Int64Ref(a.EventCatchTime.Unix())}
 				events.Payments = append(events.Payments, pair)
-				newEvents, relatedEvents := match(events)
-				events = newEvents
+			}
+		}
+	}()
 
-				for _, relatedEvent := range relatedEvents {
+	go func() {
+		for hashes := range nonMatchedHashesChannel {
+			mp := make(map[string]tonapi.Transaction)
 
-					chModel := stonfi.ToChModel(relatedEvent, jettonInfoCacheFunction, usdRateCacheFunction)
-					swapChChannel <- chModel
+			log.Printf("hashes %v \n", hashes)
+			for _, hash := range hashes {
+				if _, exists := mp[hash]; !exists {
+					if transactions, e := tonClient.FetchTransactionsFromTraceByTransactionHash(hash); e == nil {
+						for _, transaction := range transactions {
+							mp[transaction.Hash] = transaction
+						}
+					} else {
+						log.Printf("Unable to fetch trace for %v \n", hash)
+					}
+				}
+			}
+			for _, transaction := range mp {
+				addr := address.MustParseRawAddr(transaction.Account.Address)
+				if addr.String() == stonfi.StonfiRouter {
+					rt := &models.RawTransactionWithHash{
+						RawTransaction: &tonapi.GetRawTransactionsOK{
+							Transactions: transaction.Raw,
+						},
+						Hash:            transaction.Hash,
+						Lt:              uint64(transaction.Lt),
+						TransactionTime: time.UnixMilli(transaction.Utime * 1000),
+						CatchEventTime:  time.Now(),
+					}
+					go func() { rawTransactionWithHashChannel <- rt }()
 				}
 			}
 		}
@@ -163,40 +208,10 @@ func main() {
 	}
 }
 
-func match(events *core.Events[models.SwapTransferNotification, models.PaymentRequest, int]) (
-	*models.StonfiV1Events, []*models.StonfiV1RelatedEvents) {
+func match(events *core.Events[models.SwapTransferNotification, models.PaymentRequest, int64]) (
+	*stonfi.StonfiV1Events, []*stonfi.StonfiV1RelatedEvents, core.OrphanEvents[models.SwapTransferNotification, models.PaymentRequest]) {
 
-	newEvents, relatedEvents := events.Match()
+	newEvents, relatedEvents, orphanEvents := events.Match()
 
-	return newEvents, relatedEvents
-}
-
-type TonClient struct {
-	*tonapi.Client
-}
-
-func (client *TonClient) FetchRawTransactionFromHashToChannel(data *tonapi.TransactionEventData, chnl chan *models.RawTransactionWithHash) {
-	if rawTransaction, e := client.FetchRawTransactionFromHash(data); e != nil {
-		log.Printf("Smth wrong with getting raw transaction, %v \n", e)
-	} else {
-		chnl <- &models.RawTransactionWithHash{
-			RawTransaction: rawTransaction,
-			Hash:           data.TxHash,
-			Lt:             data.Lt,
-			Time:           time.Now(),
-		}
-	}
-}
-
-func (client *TonClient) FetchRawTransactionFromHash(data *tonapi.TransactionEventData) (*tonapi.GetRawTransactionsOK, error) {
-	addr := address.MustParseRawAddr(data.AccountID.String())
-
-	params := tonapi.GetRawTransactionsParams{
-		Hash:      data.TxHash,
-		AccountID: addr.String(),
-		Lt:        int64(data.Lt),
-		Count:     100,
-	}
-
-	return client.GetRawTransactions(context.Background(), params)
+	return newEvents, relatedEvents, orphanEvents
 }

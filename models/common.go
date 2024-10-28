@@ -6,8 +6,9 @@ import (
 )
 
 type RawTransactionWithHash struct {
-	RawTransaction *tonapi.GetRawTransactionsOK
-	Hash           string
-	Lt             uint64
-	Time           time.Time
+	RawTransaction  *tonapi.GetRawTransactionsOK
+	Hash            string
+	Lt              uint64
+	TransactionTime time.Time
+	CatchEventTime  time.Time
 }

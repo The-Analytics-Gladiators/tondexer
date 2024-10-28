@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -19,7 +20,7 @@ func GetRetry(ctx context.Context, uri string, retries uint64) ([]byte, error) {
 		}
 		if resp.StatusCode != 200 {
 			log.Printf("code %v \n", resp.StatusCode)
-			return nil, retry.RetryableError(errors.New("non success response " + string(resp.StatusCode)))
+			return nil, retry.RetryableError(errors.New("non success response " + strconv.FormatInt(int64(resp.StatusCode), 10)))
 		}
 		body, e := io.ReadAll(resp.Body)
 		defer resp.Body.Close()

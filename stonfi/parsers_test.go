@@ -28,16 +28,16 @@ func TestSwapTransferNotificationWithReferral(t *testing.T) {
 	tm := time.Date(2021, 8, 15, 14, 30, 45, 100, time.Local)
 
 	rawTransactionWithHash := &models.RawTransactionWithHash{
-		Hash: "e4bf0ba74bc636ebda771731f3308849b2744b088298047af0d6f2603bdb23d8",
-		Lt:   49884086000002,
-		Time: tm,
+		Hash:            "e4bf0ba74bc636ebda771731f3308849b2744b088298047af0d6f2603bdb23d8",
+		Lt:              49884086000002,
+		TransactionTime: tm,
 	}
 
 	message := ParseSwapTransferNotificationMessage(transaction.IO.In.AsInternal(), rawTransactionWithHash)
 
 	assert.Equal(t, message.Hash, "e4bf0ba74bc636ebda771731f3308849b2744b088298047af0d6f2603bdb23d8")
 	assert.Equal(t, message.Lt, uint64(49884086000002))
-	assert.Equal(t, message.Time, tm)
+	assert.Equal(t, message.TransactionTime, tm)
 	assert.Equal(t, message.QueryId, uint64(1728730147170))
 	assert.Equal(t, message.Amount, uint64(11539116566))
 	assert.Equal(t, message.Sender, address.MustParseRawAddr("0:a3fd8c4d3a5bf76f43f8bab26df4a64cc98ea8aedb44c275d0ed3cea09486947"))
@@ -55,16 +55,16 @@ func TestParsePaymentRequestMessage(t *testing.T) {
 	tm := time.Date(2021, 8, 15, 14, 30, 45, 100, time.Local)
 
 	rawTransactionWithHash := &models.RawTransactionWithHash{
-		Hash: "d680dca3d9c2448ec69282a35e08a739b04f22d8c2e23f573b63beb0cd62f3a6",
-		Lt:   49884885000003,
-		Time: tm,
+		Hash:            "d680dca3d9c2448ec69282a35e08a739b04f22d8c2e23f573b63beb0cd62f3a6",
+		Lt:              49884885000003,
+		TransactionTime: tm,
 	}
 
 	message := ParsePaymentRequestMessage(transaction.IO.In.AsInternal(), rawTransactionWithHash)
 
 	assert.Equal(t, message.Hash, "d680dca3d9c2448ec69282a35e08a739b04f22d8c2e23f573b63beb0cd62f3a6")
 	assert.Equal(t, message.Lt, uint64(49884885000003))
-	assert.Equal(t, message.Time, tm)
+	assert.Equal(t, message.TransactionTime, tm)
 	assert.Equal(t, message.QueryId, uint64(165066398389))
 	assert.Equal(t, message.Owner, address.MustParseRawAddr("0:c5f5ca55b18af2a46f9a479ae81504b5fc0ba2b43062a6f5311d4783a5e447ed"))
 	assert.Equal(t, message.ExitCode, uint64(3326308581))
@@ -72,4 +72,22 @@ func TestParsePaymentRequestMessage(t *testing.T) {
 	assert.Equal(t, message.Token0Address, address.MustParseRawAddr("0:f38723ef1e85f751e34de3ab108ff6e2e3837b9f2ad156560ad709ce7392d5c8"))
 	assert.Equal(t, message.Amount1Out, uint64(30999999999))
 	assert.Equal(t, message.Token1Address, address.MustParseRawAddr("0:1150b518b2626ad51899f98887f8824b70065456455f7fe2813f012699a4061f"))
+}
+
+func TestParseTransactionFromTrace(t *testing.T) {
+	tx := "b5ee9c7201020d010003420003b57779dcc815138d9500e449c5291e7f12738c23d575b5310000f6a253bd607384e00002dbf3c33530737bfab4bba76c7729db0030203a6165856d28050f4073c1b5a7c9437079eec9400002dbf3c335305671d764b00034694102080102030201e00405008272ef1f8f58401e32ba6861db590d28b4e0b2a8ac6d78764aafe23ac7f4ed47edee8f2b7e103b74c1deac9297c4ed1e5203cd5810029550387c1ad686df0092bd0702150c0901dcd6501868a25a110b0c01b14800a75bae4ebdeee41e4549bf762a23418b1cf7bd527aefab67cab210099bc59085001de77320544e365403912714a479fc49ce308f55d6d4c40003da894ef581ce13901dcd6500061419e000005b7e7866a608ce3aec96c0060101df0801647362d09c00004eabaa490fa8459682f0080181d7d9f19483fc183c384e84fffe34e9a52765ee3d2caee6bce6581695dd3eaf0700d92593856180022a16a3164c4d5aa3133f3110ff10496e00ca8ac8abeffc5027e024d33480c3e80b852e2700303afb3e32907f83078709d09fffc69d34a4ecbdc7a595dcd79ccb02d2bba7d5f002c22459adf51294c334773f879b8296d48a9a173d4fc31837fadd23403b77eaa201b16800ef3b9902a271b2a01c8938a523cfe24e71847aaeb6a620001ed44a77ac0e709d00127f5f7cacbe0386528e970777944c2bda81aac6780dd7f900f79714aa67341b501c7d9a800613d52000005b7e7866a610ce3aec96c00901af2593856100004eabaa490fa880181d7d9f19483fc183c384e84fffe34e9a52765ee3d2caee6bce6581695dd3eaf0014eb75c9d7bddc83c8a937eec5446831639ef7aa4f5df56cf95642013378b2109165a0bc010170a5c4f0a008580181d7d9f19483fc183c384e84fffe34e9a52765ee3d2caee6bce6581695dd3eaf002c22459adf51294c334773f879b8296d48a9a173d4fc31837fadd23403b77eaa2009e4586ac1312d00000000000000000ec00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006fc9876fe84c13d500000000000002000000000002361ad68287eee00b6346798ac4ab7298a8b8dc23aa25b1370dbe13a0288fd3e840d03cb4"
+
+	tm := time.Date(2021, 8, 15, 14, 30, 45, 100, time.Local)
+
+	rawTransactionWithHash := &models.RawTransactionWithHash{
+		Hash:            "d680dca3d9c2448ec69282a35e08a739b04f22d8c2e23f573b63beb0cd62f3a6",
+		Lt:              49884885000003,
+		TransactionTime: tm,
+	}
+
+	transaction, _ := ParseRawTransaction(tx)
+
+	message := ParseSwapTransferNotificationMessage(transaction.IO.In.AsInternal(), rawTransactionWithHash)
+
+	println(message)
 }

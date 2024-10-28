@@ -7,7 +7,7 @@ import (
 	"slices"
 )
 
-func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *jettons.ChainTokenInfo, rateCache func(string) *float64) *models.SwapCH {
+func ToChModel(re *StonfiV1RelatedEvents, cache func(string) *jettons.ChainTokenInfo, rateCache func(string) *float64) *models.SwapCH {
 	if re.Notification == nil {
 		return nil
 	}
@@ -106,7 +106,7 @@ func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *jettons.Cha
 		Dex:               "StonfiV1",
 		Hashes:            hashes,
 		Lt:                re.Notification.Lt,
-		Time:              re.Notification.Time,
+		Time:              re.Notification.TransactionTime,
 		JettonIn:          jettonMasterIn,
 		AmountIn:          amountIn,
 		JettonInSymbol:    tokenInSymbol,
@@ -123,5 +123,6 @@ func ToChModel(re *models.StonfiV1RelatedEvents, cache func(string) *jettons.Cha
 		Sender:            re.Notification.ToAddress.String(),
 		ReferralAddress:   referralAddress,
 		ReferralAmount:    referralAmount,
+		CatchTime:         re.Notification.EventCatchTime,
 	}
 }

@@ -176,6 +176,7 @@ func SaveSwapsToClickhouse(modelsBatch []*models.SwapCH) error {
 				model.Sender,
 				model.ReferralAddress,
 				model.ReferralAmount,
+				model.CatchTime,
 			)
 
 			if e != nil {

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"TonArb/core"
 	"fmt"
 	"github.com/xssnick/tonutils-go/address"
 	"time"
@@ -10,7 +9,8 @@ import (
 type SwapTransferNotification struct {
 	Hash            string
 	Lt              uint64
-	Time            time.Time
+	TransactionTime time.Time
+	EventCatchTime  time.Time
 	QueryId         uint64
 	Amount          uint64
 	Sender          *address.Address // from_user in contract
@@ -21,31 +21,29 @@ type SwapTransferNotification struct {
 }
 
 func (tn *SwapTransferNotification) String() string {
-	return fmt.Sprintf("SwapTransferNotification(Lt: %v, Time: %v, QueryId: %v, Amount: %v, Sender: %v, TokenWallet: %v, "+
+	return fmt.Sprintf("SwapTransferNotification(Lt: %v, TransactionTime: %v, QueryId: %v, Amount: %v, Sender: %v, TokenWallet: %v, "+
 		"MinOut: %v, ToAddress: %v, ReferralAddress: %v, Hash: %v)",
-		tn.Lt, tn.Time, tn.QueryId, tn.Amount, tn.Sender, tn.TokenWallet,
+		tn.Lt, tn.TransactionTime, tn.QueryId, tn.Amount, tn.Sender, tn.TokenWallet,
 		tn.MinOut, tn.ToAddress, tn.ReferralAddress, tn.Hash)
 }
 
 type PaymentRequest struct {
-	Hash          string
-	Lt            uint64
-	Time          time.Time
-	QueryId       uint64
-	Owner         *address.Address
-	ExitCode      uint64
-	Amount0Out    uint64
-	Token0Address *address.Address
-	Amount1Out    uint64
-	Token1Address *address.Address
+	Hash            string
+	Lt              uint64
+	TransactionTime time.Time
+	EventCatchTime  time.Time
+	QueryId         uint64
+	Owner           *address.Address
+	ExitCode        uint64
+	Amount0Out      uint64
+	Token0Address   *address.Address
+	Amount1Out      uint64
+	Token1Address   *address.Address
 }
 
 func (pr *PaymentRequest) String() string {
-	return fmt.Sprintf("PaymentRequest(Lt: %v, Time: %v, QueryId: %v, Owner: %v, ExitCode: %v, Amount0Out: %v, "+
+	return fmt.Sprintf("PaymentRequest(Lt: %v, TransactionTime: %v, QueryId: %v, Owner: %v, ExitCode: %v, Amount0Out: %v, "+
 		"Token0Address: %v, Amount1Out: %v, Token1Address: %v, Hash: %v)",
-		pr.Lt, pr.Time, pr.QueryId, pr.Owner, pr.ExitCode, pr.Amount0Out,
+		pr.Lt, pr.TransactionTime, pr.QueryId, pr.Owner, pr.ExitCode, pr.Amount0Out,
 		pr.Token0Address, pr.Amount1Out, pr.Token1Address, pr.Hash)
 }
-
-type StonfiV1Events = core.Events[SwapTransferNotification, PaymentRequest, int]
-type StonfiV1RelatedEvents = core.RelatedEvents[SwapTransferNotification, PaymentRequest]

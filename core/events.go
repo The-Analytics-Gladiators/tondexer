@@ -18,11 +18,18 @@ type RelatedEvents[Notification any, Payment any] struct {
 	Payments     []*Payment
 }
 
-func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, Payment, T], []*RelatedEvents[Notification, Payment]) {
+type OrphanEvents[Notification any, Payment any] struct {
+	Notifications []*Notification
+	Payments      []*Payment
+}
+
+func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, Payment, T], []*RelatedEvents[Notification, Payment], OrphanEvents[Notification, Payment]) {
 	var relatedEvents []*RelatedEvents[Notification, Payment]
 
 	var processedNotificationIndexes []int
 	var processedPaymentIndexes []int
+
+	var orphanEvents OrphanEvents[Notification, Payment]
 	for notificationIndex, notification := range events.Notifications {
 		if events.ExpireCondition(notification.Second) {
 			processedNotificationIndexes = append(processedNotificationIndexes, notificationIndex)
@@ -39,6 +46,8 @@ func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, P
 
 			if len(relatedEvent.Payments) != 0 {
 				relatedEvents = append(relatedEvents, relatedEvent)
+			} else {
+				orphanEvents.Notifications = append(orphanEvents.Notifications, notification.First)
 			}
 		}
 	}
@@ -49,14 +58,15 @@ func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, P
 	for notificationIndex, notification := range events.Notifications {
 		if !Contains(processedNotificationIndexes, notificationIndex) {
 			filteredNotifications = append(filteredNotifications, notification)
-		} else {
-			//log.Printf("Not matched %v", notification)
 		}
 	}
 
 	for paymentIndex, payment := range events.Payments {
 		if !Contains(processedPaymentIndexes, paymentIndex) && !events.ExpireCondition(payment.Second) {
 			filteredPayments = append(filteredPayments, payment)
+		} else if events.ExpireCondition(payment.Second) && !Contains(processedPaymentIndexes, paymentIndex) {
+			//log.Printf("Not matched payment %v \n", payment)
+			orphanEvents.Payments = append(orphanEvents.Payments, payment.First)
 		}
 	}
 
@@ -67,14 +77,6 @@ func (events *Events[Notification, Payment, T]) Match() (*Events[Notification, P
 			NotificationWithPaymentMatchCondition: events.NotificationWithPaymentMatchCondition,
 			PaymentsMatchCondition:                events.PaymentsMatchCondition,
 		},
-		relatedEvents
-}
-
-func Contains(slice []int, value int) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
+		relatedEvents,
+		orphanEvents
 }
