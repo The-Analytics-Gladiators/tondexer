@@ -88,6 +88,17 @@ func main() {
 			if n.QueryId != p.QueryId {
 				return false
 			}
+			// Can't find ref for the swap without the ref
+			if n.ReferralAddress == nil && p.ExitCode == stonfi.SwapRefPaymentCode {
+				return false
+			}
+
+			//notification token wallet should be the same as payout
+			if p.Amount0Out > 0 && !p.Token0Address.Equals(n.TokenWallet) ||
+				p.Amount1Out > 0 && !p.Token1Address.Equals(n.TokenWallet) {
+				return false
+			}
+
 			return n.ToAddress.Equals(p.Owner) ||
 				(n.ReferralAddress != nil && p.Owner.Equals(n.ReferralAddress))
 		},
@@ -169,7 +180,7 @@ func main() {
 							mp[transaction.Hash] = transaction
 						}
 					} else {
-						log.Printf("Unable to fetch trace for %v \n", hash)
+						log.Printf("Unable to fetch trace for %v: %e \n", hash, e)
 					}
 				}
 			}
