@@ -113,11 +113,11 @@ func InitUsdRateCache() (*cache.LoadableCache[any], error) {
 					return
 				}
 				log.Printf("Warming up rate cache with %v entities \n", len(walletToMasters))
-				for _, walletToMaster := range walletToMasters {
+				for i, walletToMaster := range walletToMasters {
 
 					res, e := cacheManager.Get(context.Background(), walletToMaster.Master)
 					if e == nil {
-						log.Printf("For master %v rate is %v \n", walletToMaster.Master, *res.(*float64))
+						log.Printf("%v/%v For master %v rate is %v \n", i, len(walletToMasters), walletToMaster.Master, *res.(*float64))
 					} else {
 						log.Printf("Nil rate for %v master \n", walletToMaster.Master)
 					}
@@ -128,10 +128,10 @@ func InitUsdRateCache() (*cache.LoadableCache[any], error) {
 		},
 	)
 
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(1 * time.Hour)
 
 	go func() {
-		time.Sleep(1 * time.Hour)
+		time.Sleep(2 * time.Minute)
 		for range ticker.C {
 			recalculateUsdRates(cacheManager)
 		}

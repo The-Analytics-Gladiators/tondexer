@@ -7,7 +7,6 @@ import (
 	"TonArb/stonfi"
 	"context"
 	"github.com/tonkeeper/tonapi-go"
-	"github.com/xssnick/tonutils-go/address"
 	"log"
 	"os"
 	"time"
@@ -38,73 +37,44 @@ func main() {
 	accounts := []string{stonfi.StonfiRouter}
 
 	client, _ := tonapi.New(tonapi.WithToken(consoleToken))
-	tonClient := &core.TonClient{Client: client}
-
-	rawTransactionWithHashChannel := make(chan *models.RawTransactionWithHash)
-
-	stonfiTransferNotificationsChannel := make(chan *models.SwapTransferNotification)
-	stonfiPaymentRequestChannel := make(chan *models.PaymentRequest)
+	incomingTransactionsChannel := make(chan string)
 
 	go func() {
-		streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
-			ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
-				log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
-				go tonClient.FetchRawTransactionFromHashToChannel(&data, rawTransactionWithHashChannel)
+		for {
+			e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
+				ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
+					log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
+					//go tonClient.FetchRawTransactionFromHashToChannel(&data, rawTransactionWithHashChannel)
+					go func() { incomingTransactionsChannel <- data.TxHash }()
+				})
+				if err := ws.SubscribeToTransactions(accounts, nil); err != nil {
+					return err
+				}
+				return nil
 			})
-			if err := ws.SubscribeToTransactions(accounts, nil); err != nil {
-				return err
-			}
-			return nil
-		})
-	}()
-
-	go func() {
-		for rawTransactionWithHash := range rawTransactionWithHashChannel {
-			transaction, _ := stonfi.ParseRawTransaction(rawTransactionWithHash.RawTransaction.Transactions)
-			slice := transaction.IO.In.AsInternal().Body.BeginParse()
-			msgCode, e := slice.LoadUInt(32)
 			if e != nil {
-				continue
-			}
-			if msgCode == stonfi.TransferNotificationCode {
-				transferNotification := stonfi.ParseSwapTransferNotificationMessage(transaction.IO.In.AsInternal(), rawTransactionWithHash)
-				if transferNotification != nil {
-					stonfiTransferNotificationsChannel <- transferNotification
-				}
-			} else if msgCode == stonfi.PaymentRequestCode {
-				paymentRequest := stonfi.ParsePaymentRequestMessage(transaction.IO.In.AsInternal(), rawTransactionWithHash)
-				if paymentRequest != nil {
-					stonfiPaymentRequestChannel <- paymentRequest
-				}
+				log.Printf("Streaming failed! %v \n", e)
 			}
 		}
 	}()
 
-	events := &core.Events[models.SwapTransferNotification, models.PaymentRequest, int64]{
-		ExpireCondition: func(tm *int64) bool {
-			return time.Now().Unix()-*tm > 30
-		},
-		NotificationWithPaymentMatchCondition: func(n *models.SwapTransferNotification, p *models.PaymentRequest) bool {
-			if n.QueryId != p.QueryId {
-				return false
-			}
-			// Can't find ref for the swap without the ref
-			if n.ReferralAddress == nil && p.ExitCode == stonfi.SwapRefPaymentCode {
-				return false
-			}
+	readyTransactionsChannel := make(chan []string)
 
-			//notification token wallet should be the same as payout
-			if p.Amount0Out > 0 && !p.Token0Address.Equals(n.TokenWallet) ||
-				p.Amount1Out > 0 && !p.Token1Address.Equals(n.TokenWallet) {
-				return false
-			}
-
-			return n.ToAddress.Equals(p.Owner) ||
-				(n.ReferralAddress != nil && p.Owner.Equals(n.ReferralAddress))
-		},
+	transactionsWaitingList := &core.WaitingList[string]{
+		ExpirationSeconds: 40 * time.Second,
 	}
-
-	swapChChannel := make(chan *models.SwapCH)
+	transactionsTicker := time.NewTicker(10 * time.Second)
+	go func() {
+		for {
+			select {
+			case transactionHash := <-incomingTransactionsChannel:
+				transactionsWaitingList.Add(transactionHash)
+			case <-transactionsTicker.C:
+				evicted := transactionsWaitingList.Evict()
+				go func() { readyTransactionsChannel <- evicted }()
+			}
+		}
+	}()
 
 	jettonInfoCacheFunction := func(wallet string) *jettons.ChainTokenInfo {
 		master, e := walletMasterCache.Get(context.Background(), wallet)
@@ -127,102 +97,49 @@ func main() {
 		}
 		return rate.(*float64)
 	}
+	swapChChannel := make(chan []*models.SwapCH)
 
-	nonMatchedHashesChannel := make(chan []string)
-
-	matchTicker := time.NewTicker(5 * time.Second)
-
+	processedTransactions := core.NewEvictableSet[string](3 * time.Minute)
 	go func() {
-		for {
-			select {
-			case <-matchTicker.C:
-				newEvents, relatedEvents, orphanEvents := match(events)
-				events = newEvents
-
-				var nonMatchedHashes []string
-				for _, relatedEvent := range relatedEvents {
-					chModel := stonfi.ToChModel(relatedEvent, jettonInfoCacheFunction, usdRateCacheFunction)
-					if chModel == nil {
-						if relatedEvent.Notification != nil {
-							nonMatchedHashes = append(nonMatchedHashes, relatedEvent.Notification.Hash)
-						}
-						hashes := core.Map(relatedEvent.Payments, func(t *models.PaymentRequest) string { return t.Hash })
-						nonMatchedHashes = append(nonMatchedHashes, hashes...)
-					}
-					swapChChannel <- chModel
+		for transactionHashes := range readyTransactionsChannel {
+			var modelsCh []*models.SwapCH
+			for _, transactionHash := range transactionHashes {
+				if processedTransactions.Exists(transactionHash) {
+					continue
+				}
+				params := tonapi.GetTraceParams{TraceID: transactionHash}
+				trace, e := client.GetTrace(context.Background(), params)
+				if e != nil {
+					continue
+				}
+				for _, transaction := range stonfi.GetAllTransactionsFromTrace(trace) {
+					processedTransactions.Add(transaction.Hash)
 				}
 
-				nonMatchedHashes = append(nonMatchedHashes, core.Map(orphanEvents.Notifications, func(t *models.SwapTransferNotification) string { return t.Hash })...)
-				nonMatchedHashes = append(nonMatchedHashes, core.Map(orphanEvents.Payments, func(t *models.PaymentRequest) string { return t.Hash })...)
+				swaps := stonfi.ExtractStonfiSwapsFromRootTrace(trace)
+				modelsCh = append(modelsCh, core.Map(swaps, func(swap *stonfi.StonfiV1Swap) *models.SwapCH {
+					return stonfi.ToChSwap(swap, jettonInfoCacheFunction, usdRateCacheFunction)
+				})...)
 
-				if len(nonMatchedHashes) > 0 {
-					go func() { nonMatchedHashesChannel <- nonMatchedHashes }()
-				}
-			case notification := <-stonfiTransferNotificationsChannel:
-				pair := &core.Pair[*models.SwapTransferNotification, *int64]{First: notification, Second: core.Int64Ref(notification.EventCatchTime.Unix())}
-				events.Notifications = append(events.Notifications, pair)
-			case a := <-stonfiPaymentRequestChannel:
-				pair := &core.Pair[*models.PaymentRequest, *int64]{First: a, Second: core.Int64Ref(a.EventCatchTime.Unix())}
-				events.Payments = append(events.Payments, pair)
 			}
+			go func() {
+				swapChChannel <- core.Filter(modelsCh, func(ch *models.SwapCH) bool {
+					return ch != nil
+				})
+			}()
+			processedTransactions.Evict()
 		}
 	}()
 
-	go func() {
-		for hashes := range nonMatchedHashesChannel {
-			mp := make(map[string]tonapi.Transaction)
-
-			log.Printf("hashes %v \n", hashes)
-			for _, hash := range hashes {
-				if _, exists := mp[hash]; !exists {
-					if transactions, e := tonClient.FetchTransactionsFromTraceByTransactionHash(hash); e == nil {
-						for _, transaction := range transactions {
-							mp[transaction.Hash] = transaction
-						}
-					} else {
-						log.Printf("Unable to fetch trace for %v: %e \n", hash, e)
-					}
-				}
-			}
-			for _, transaction := range mp {
-				addr := address.MustParseRawAddr(transaction.Account.Address)
-				if addr.String() == stonfi.StonfiRouter {
-					rt := &models.RawTransactionWithHash{
-						RawTransaction: &tonapi.GetRawTransactionsOK{
-							Transactions: transaction.Raw,
-						},
-						Hash:            transaction.Hash,
-						Lt:              uint64(transaction.Lt),
-						TransactionTime: time.UnixMilli(transaction.Utime * 1000),
-						CatchEventTime:  time.Now(),
-					}
-					go func() { rawTransactionWithHashChannel <- rt }()
-				}
-			}
-		}
-	}()
-
-	var modelsBatch []*models.SwapCH
-	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
-		case model := <-swapChChannel:
-			if model != nil {
-				modelsBatch = append(modelsBatch, model)
-			}
-		case <-ticker.C:
-			e := persistence.SaveSwapsToClickhouse(modelsBatch)
-			if e == nil {
-				modelsBatch = []*models.SwapCH{}
+		case chModels := <-swapChChannel:
+			if chModels != nil {
+				e := persistence.SaveSwapsToClickhouse(chModels)
+				if e != nil {
+					log.Printf("Warning: Unable to save models %v\n", e)
+				}
 			}
 		}
 	}
-}
-
-func match(events *core.Events[models.SwapTransferNotification, models.PaymentRequest, int64]) (
-	*stonfi.StonfiV1Events, []*stonfi.StonfiV1RelatedEvents, core.OrphanEvents[models.SwapTransferNotification, models.PaymentRequest]) {
-
-	newEvents, relatedEvents, orphanEvents := events.Match()
-
-	return newEvents, relatedEvents, orphanEvents
 }

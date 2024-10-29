@@ -4,10 +4,12 @@ import (
 	"TonArb/core"
 	"TonArb/models"
 	"encoding/hex"
+	"errors"
+	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
-	"log"
+	"time"
 )
 
 const SwapOpCode = 630424929
@@ -22,6 +24,47 @@ const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
 
 type StonfiV1Events = core.Events[models.SwapTransferNotification, models.PaymentRequest, int64]
 type StonfiV1RelatedEvents = core.RelatedEvents[models.SwapTransferNotification, models.PaymentRequest]
+
+func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PaymentRequest, error) {
+	transaction, e := ParseRawTransaction(trace.Transaction.Raw)
+	if e != nil {
+		return nil, e
+	}
+	message := transaction.IO.In.AsInternal()
+	cll := message.Body.BeginParse()
+
+	msgCode := cll.MustLoadUInt(32) // Message code
+	if msgCode != PaymentRequestCode {
+		return nil, errors.New("invalid payment request code")
+	}
+
+	queryId := cll.MustLoadUInt(64)
+	owner := cll.MustLoadAddr()
+	exitCode := cll.MustLoadUInt(32)
+	if exitCode != SwapOkPaymentCode && exitCode != SwapRefPaymentCode {
+		return nil, errors.New("invalid payment refOrOk request code")
+	}
+
+	ref := cll.MustLoadRef()
+	amount0Out := ref.MustLoadCoins()
+	token0Address := ref.MustLoadAddr()
+	amount1Out := ref.MustLoadCoins()
+	token1Address := ref.MustLoadAddr()
+
+	return &models.PaymentRequest{
+		Hash:            trace.Transaction.Hash,
+		Lt:              message.CreatedLT,
+		TransactionTime: time.UnixMilli(trace.Transaction.Utime * 1000),
+		EventCatchTime:  time.Now(),
+		QueryId:         queryId,
+		Owner:           owner,
+		ExitCode:        exitCode,
+		Amount0Out:      amount0Out,
+		Token0Address:   token0Address,
+		Amount1Out:      amount1Out,
+		Token1Address:   token1Address,
+	}, nil
+}
 
 func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.PaymentRequest {
 	cll := message.Body.BeginParse()
@@ -71,6 +114,55 @@ func ParseRawTransaction(transactions string) (*tlb.Transaction, error) {
 	return &tx, nil
 }
 
+func V1NotificationFromTrace(trace *tonapi.Trace) (*models.SwapTransferNotification, error) {
+	transaction, e := ParseRawTransaction(trace.Transaction.Raw)
+	if e != nil {
+		return nil, e
+	}
+	message := transaction.IO.In.AsInternal()
+
+	cll := message.Body.BeginParse()
+	msgCode := cll.MustLoadUInt(32) // Message code
+	if msgCode != TransferNotificationCode {
+		return nil, errors.New("unknown transfer notification code")
+	}
+
+	queryId := cll.MustLoadUInt(64)
+	jettonAmount := cll.MustLoadCoins()
+	fromUser := cll.MustLoadAddr()
+
+	ref := cll.MustLoadRef()
+	transferredOp := ref.MustLoadUInt(32)
+	tokenWallet1 := ref.MustLoadAddr()
+
+	if transferredOp != SwapOpCode {
+		return nil, errors.New("unknown swap code for notification")
+	}
+
+	minOut := ref.MustLoadCoins()
+	toAddress := ref.MustLoadAddr()
+	hasRef := ref.MustLoadBoolBit()
+
+	var refAddress *address.Address
+	if hasRef {
+		refAddress = ref.MustLoadAddr()
+	}
+	return &models.SwapTransferNotification{
+		Hash: trace.Transaction.Hash,
+		//Lt:              uint64(trace.Transaction.Lt),
+		Lt:              message.CreatedLT,
+		TransactionTime: time.UnixMilli(trace.Transaction.Utime * 1000),
+		EventCatchTime:  time.Now(),
+		QueryId:         queryId,
+		Amount:          jettonAmount,
+		Sender:          fromUser,
+		TokenWallet:     tokenWallet1,
+		MinOut:          minOut,
+		ToAddress:       toAddress,
+		ReferralAddress: refAddress,
+	}, nil
+}
+
 func ParseSwapTransferNotificationMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.SwapTransferNotification {
 	cll := message.Body.BeginParse()
 
@@ -98,10 +190,6 @@ func ParseSwapTransferNotificationMessage(message *tlb.InternalMessage, rawTrans
 	var refAddress *address.Address
 	if hasRef {
 		refAddress = ref.MustLoadAddr()
-	}
-
-	if !fromUser.Equals(toAddress) {
-		log.Printf("!!!!! Different From and Sender %v \n", rawTransactionWithHash.Hash)
 	}
 
 	return &models.SwapTransferNotification{

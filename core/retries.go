@@ -19,7 +19,7 @@ func GetRetry(ctx context.Context, uri string, retries uint64) ([]byte, error) {
 			return nil, retry.RetryableError(e)
 		}
 		if resp.StatusCode != 200 {
-			log.Printf("code %v \n", resp.StatusCode)
+			log.Printf("code %v for %v \n", resp.StatusCode, uri)
 			return nil, retry.RetryableError(errors.New("non success response " + strconv.FormatInt(int64(resp.StatusCode), 10)))
 		}
 		body, e := io.ReadAll(resp.Body)

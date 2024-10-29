@@ -27,7 +27,7 @@ func Filter[T any](arr []T, f func(T) bool) []T {
 	return result
 }
 
-func Contains(slice []int, value int) bool {
+func Contains[T comparable](slice []T, value T) bool {
 	for _, v := range slice {
 		if v == value {
 			return true
