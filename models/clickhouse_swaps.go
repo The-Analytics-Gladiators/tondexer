@@ -20,6 +20,7 @@ type SwapCH struct {
 	JettonOutUsdRate  float64   `ch:"jetton_out_usd_rate"`
 	JettonOutDecimals uint64    `ch:"jetton_out_decimals"`
 	MinAmountOut      uint64    `ch:"min_amount_out"`
+	PoolAddress       string    `ch:"pool_address"`
 	Sender            string    `ch:"sender"`
 	ReferralAddress   string    `ch:"referral_address"`
 	ReferralAmount    uint64    `ch:"referral_amount"`

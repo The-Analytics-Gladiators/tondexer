@@ -177,6 +177,7 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 				model.JettonOutUsdRate,
 				model.JettonOutDecimals,
 				model.MinAmountOut,
+				model.PoolAddress,
 				model.Sender,
 				model.ReferralAddress,
 				model.ReferralAmount,

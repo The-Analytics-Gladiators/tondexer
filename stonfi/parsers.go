@@ -1,7 +1,6 @@
 package stonfi
 
 import (
-	"TonArb/core"
 	"TonArb/models"
 	"encoding/hex"
 	"errors"
@@ -21,9 +20,6 @@ const PaymentRequestCode = 4181439551
 
 const StonfiRouter = "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt"
 const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
-
-type StonfiV1Events = core.Events[models.SwapTransferNotification, models.PaymentRequest, int64]
-type StonfiV1RelatedEvents = core.RelatedEvents[models.SwapTransferNotification, models.PaymentRequest]
 
 func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PaymentRequest, error) {
 	transaction, e := ParseRawTransaction(trace.Transaction.Raw)

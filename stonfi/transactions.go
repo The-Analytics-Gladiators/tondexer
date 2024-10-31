@@ -14,21 +14,30 @@ type StonfiV1Swap struct {
 	Notification *models.SwapTransferNotification
 	Payment      *models.PaymentRequest
 	Referral     *models.PaymentRequest
+	PoolAddress  string
+}
+
+type RelatedEvents[Notification any, Payment any] struct {
+	Notification *Notification
+	Payments     []*Payment
+	Pool         *address.Address
 }
 
 func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*StonfiV1Swap {
-	var swaps []core.RelatedEvents[tonapi.Trace, tonapi.Trace]
+	var swaps []RelatedEvents[tonapi.Trace, tonapi.Trace]
 
 	var findNextSwap func(trace *tonapi.Trace)
 
 	findNextSwap = func(trace *tonapi.Trace) {
 		notifications := findRouterTransferNotificationNodes(trace)
 		for _, notification := range notifications {
+			poolAddress := findPoolAddressForNotification(notification)
 			payments := findPaymentsForNotification(notification)
 			if len(payments) > 0 {
-				swaps = append(swaps, core.RelatedEvents[tonapi.Trace, tonapi.Trace]{
+				swaps = append(swaps, RelatedEvents[tonapi.Trace, tonapi.Trace]{
 					Notification: notification,
 					Payments:     payments,
+					Pool:         poolAddress,
 				})
 
 				for _, payment := range payments {
@@ -39,14 +48,14 @@ func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*StonfiV1Swap {
 	}
 	findNextSwap(trace)
 
-	stonfiSwaps := core.Map(swaps, func(re core.RelatedEvents[tonapi.Trace, tonapi.Trace]) *StonfiV1Swap {
+	stonfiSwaps := core.Map(swaps, func(re RelatedEvents[tonapi.Trace, tonapi.Trace]) *StonfiV1Swap {
 		return relatedEventsToStonfiSwap(re)
 	})
 
 	return core.Filter(stonfiSwaps, func(swap *StonfiV1Swap) bool { return swap != nil })
 }
 
-func relatedEventsToStonfiSwap(relatedEvents core.RelatedEvents[tonapi.Trace, tonapi.Trace]) *StonfiV1Swap {
+func relatedEventsToStonfiSwap(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Trace]) *StonfiV1Swap {
 	if relatedEvents.Notification == nil {
 		log.Printf("Warning: no notification at relatedEvents \n")
 		return nil
@@ -92,6 +101,10 @@ func relatedEventsToStonfiSwap(relatedEvents core.RelatedEvents[tonapi.Trace, to
 		refPayment := allPayments[refPaymentIndex]
 		result.Referral = refPayment
 	}
+
+	if relatedEvents.Pool != nil {
+		result.PoolAddress = relatedEvents.Pool.String()
+	}
 	return result
 }
 
@@ -126,6 +139,14 @@ func findPaymentsForNotification(notification *tonapi.Trace) []*tonapi.Trace {
 		traverse(&child)
 	}
 	return payments
+}
+
+func findPoolAddressForNotification(notification *tonapi.Trace) *address.Address {
+	children := notification.Children
+	if len(children) == 0 {
+		return nil
+	}
+	return address.MustParseRawAddr(children[0].Transaction.Account.Address)
 }
 
 func findRouterTransferNotificationNodes(root *tonapi.Trace) []*tonapi.Trace {
