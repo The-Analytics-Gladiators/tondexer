@@ -1,13 +1,14 @@
 package persistence
 
 import (
+	"TonArb/core"
 	"context"
 	"fmt"
 	"time"
 )
 
-func ReadLastSwaps(limit uint64) ([]EnrichedSwapCH, error) {
-	conn, err := connection()
+func ReadLastSwaps(config *core.Config, limit uint64) ([]EnrichedSwapCH, error) {
+	conn, err := connection(config)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +39,10 @@ SELECT
 	referral_address,
 	referral_amount,
 	floor((referral_amount / pow(10, jetton_out_decimals)) * jetton_out_usd_rate, 4) AS referral_usd
-FROM swaps
+FROM %v.swaps
 ORDER BY time DESC
 LIMIT %v
-`, limit)
+`, config.DbName, limit)
 	rows, err := conn.Query(context.Background(), query)
 	//
 	//LIMIT %v

@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"TonArb/core"
 	"TonArb/models"
 	"context"
 	"fmt"
@@ -9,22 +10,22 @@ import (
 	"log"
 )
 
-func connection() (driver.Conn, error) {
+func connection(config *core.Config) (driver.Conn, error) {
 	return clickhouse.Open(&clickhouse.Options{
-		Addr:         []string{fmt.Sprintf("%s:%d", "localhost", 9000)},
+		Addr:         []string{fmt.Sprintf("%s:%d", config.DbHost, config.DbPort)},
 		Protocol:     clickhouse.Native,
 		MaxOpenConns: 5,
 		MaxIdleConns: 5,
-		Auth:         clickhouse.Auth{
-			//Database: env.Database,
-			//Username: env.Username,
-			//Password: env.Password,
+		Auth: clickhouse.Auth{
+			Database: config.DbName,
+			Username: config.DbUser,
+			Password: config.DbPassword,
 		},
 	})
 }
 
-func WriteToClickhouse[T any](entities []*T, table string, batchFunc func(driver.Batch, *T) error) error {
-	conn, err := connection()
+func WriteToClickhouse[T any](config *core.Config, entities []*T, table string, batchFunc func(driver.Batch, *T) error) error {
+	conn, err := connection(config)
 
 	if err != nil {
 		log.Printf("Open connection issue: %v \n", err)
@@ -38,7 +39,7 @@ func WriteToClickhouse[T any](entities []*T, table string, batchFunc func(driver
 		}
 	}(conn)
 
-	batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO default."+table)
+	batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO "+config.DbName+"."+table)
 	if err != nil {
 		fmt.Printf("Unable to create batch  %v \n", err)
 		return err
@@ -65,8 +66,8 @@ func WriteToClickhouse[T any](entities []*T, table string, batchFunc func(driver
 	}
 }
 
-func ReadClickhouseJettons() ([]models.ClickhouseJetton, error) {
-	conn, err := connection()
+func ReadClickhouseJettons(config *core.Config) ([]models.ClickhouseJetton, error) {
+	conn, err := connection(config)
 	if err != nil {
 		return nil, err
 	}
@@ -75,16 +76,16 @@ func ReadClickhouseJettons() ([]models.ClickhouseJetton, error) {
 
 	var result []models.ClickhouseJetton
 
-	if err = conn.Select(context.Background(), &result, `
-		SELECT name, symbol, master, decimals FROM clickhouse_jetton`); err != nil {
+	if err = conn.Select(context.Background(), &result, fmt.Sprintf(`
+		SELECT name, symbol, master, decimals FROM %v.clickhouse_jetton`, config.DbName)); err != nil {
 		return nil, err
 	}
 
 	return result, nil
 }
 
-func ReadWalletMasters() ([]models.WalletJetton, error) {
-	conn, err := connection()
+func ReadWalletMasters(config *core.Config) ([]models.WalletJetton, error) {
+	conn, err := connection(config)
 	if err != nil {
 		return nil, err
 	}
@@ -93,35 +94,16 @@ func ReadWalletMasters() ([]models.WalletJetton, error) {
 
 	var result []models.WalletJetton
 
-	if err = conn.Select(context.Background(), &result, `
-		SELECT wallet, master FROM wallet_to_master`); err != nil {
+	if err = conn.Select(context.Background(), &result, fmt.Sprintf(`
+		SELECT wallet, master FROM %v.wallet_to_master`, config.DbName)); err != nil {
 		return nil, err
 	}
 
 	return result, nil
 }
 
-//func ReadLastSwaps(limit uint64) ([]models.SwapCH, error) {
-//	conn, err := connection()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	defer conn.Close()
-//
-//	var result []models.SwapCH
-//
-//	if err = conn.Select(context.Background(), &result,
-//		//`SELECT * FROM swaps ORDER BY time DESC limit `+strconv.FormatUint(limit, 10)); err != nil {
-//		`SELECT * FROM swaps`); err != nil {
-//		return nil, err
-//	}
-//
-//	return result, nil
-//}
-
-func SaveSwapsToClickhouse(modelsBatch []*models.SwapCH) error {
-	conn, err := connection()
+func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) error {
+	conn, err := connection(config)
 
 	if err != nil {
 		log.Printf("Open connection issue: %v \n", err)
@@ -135,7 +117,7 @@ func SaveSwapsToClickhouse(modelsBatch []*models.SwapCH) error {
 		}
 	}(conn)
 
-	batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO default.swaps")
+	batch, err := conn.PrepareBatch(context.Background(), fmt.Sprintf("INSERT INTO %v.swaps"))
 	if err != nil {
 		fmt.Printf("Unable to create batch  %v \n", err)
 		return err

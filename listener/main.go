@@ -6,6 +6,7 @@ import (
 	"TonArb/persistence"
 	"TonArb/stonfi"
 	"context"
+	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/tonkeeper/tonapi-go"
 	"log"
 	"os"
@@ -15,18 +16,22 @@ import (
 )
 
 func main() {
+	var cfg core.Config
+	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
+		panic(err)
+	}
 
-	jettonInfoCache, e := jettons.InitJettonInfoCache()
+	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg)
 	if e != nil {
 		panic(e)
 	}
 
-	walletMasterCache, e := jettons.InitWalletJettonCache()
+	walletMasterCache, e := jettons.InitWalletJettonCache(&cfg)
 	if e != nil {
 		panic(e)
 	}
 
-	usdRateCache, err := jettons.InitUsdRateCache()
+	usdRateCache, err := jettons.InitUsdRateCache(&cfg)
 	if err != nil {
 		panic(e)
 	}
@@ -135,7 +140,7 @@ func main() {
 		select {
 		case chModels := <-swapChChannel:
 			if chModels != nil {
-				e := persistence.SaveSwapsToClickhouse(chModels)
+				e := persistence.SaveSwapsToClickhouse(&cfg, chModels)
 				if e != nil {
 					log.Printf("Warning: Unable to save models %v\n", e)
 				}

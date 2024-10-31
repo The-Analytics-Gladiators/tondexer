@@ -1,6 +1,7 @@
 package jettons
 
 import (
+	"TonArb/core"
 	"TonArb/models"
 	"TonArb/persistence"
 	"context"
@@ -13,6 +14,7 @@ import (
 )
 
 func initCache[T any](
+	config *core.Config,
 	table string,
 	cacheFunction func(key any) (*T, error),
 	batchAppendFunc func(batch driver.Batch, model *T) error,
@@ -42,7 +44,7 @@ func initCache[T any](
 					toPersist = append(toPersist, model)
 				case <-ticker.C:
 					if len(toPersist) > 0 {
-						if e := persistence.WriteToClickhouse(toPersist, table, batchAppendFunc); e == nil {
+						if e := persistence.WriteToClickhouse(config, toPersist, table, batchAppendFunc); e == nil {
 							toPersist = []*T{}
 						}
 					}
@@ -61,8 +63,9 @@ func initCache[T any](
 	return cacheManager, nil
 }
 
-func InitJettonInfoCache() (*cache.LoadableCache[any], error) {
+func InitJettonInfoCache(config *core.Config) (*cache.LoadableCache[any], error) {
 	return initCache[ChainTokenInfo](
+		config,
 		"clickhouse_jetton",
 		func(key any) (*ChainTokenInfo, error) {
 			return JettonInfoByMaster(key.(string))
@@ -76,7 +79,7 @@ func InitJettonInfoCache() (*cache.LoadableCache[any], error) {
 			)
 		},
 		func(cacheManager *cache.LoadableCache[any]) error {
-			chJettons, e := persistence.ReadClickhouseJettons()
+			chJettons, e := persistence.ReadClickhouseJettons(config)
 			if e != nil {
 				return e
 			}
@@ -95,8 +98,9 @@ func InitJettonInfoCache() (*cache.LoadableCache[any], error) {
 		})
 }
 
-func InitUsdRateCache() (*cache.LoadableCache[any], error) {
+func InitUsdRateCache(config *core.Config) (*cache.LoadableCache[any], error) {
 	cacheManager, err := initCache[float64](
+		config,
 		"",
 		func(key any) (*float64, error) {
 			jettonInfo, e := JettonInfoFromMasterPageRetries(key.(string), 4)
@@ -108,7 +112,7 @@ func InitUsdRateCache() (*cache.LoadableCache[any], error) {
 		func(batch driver.Batch, model *float64) error { return nil },
 		func(cacheManager *cache.LoadableCache[any]) error {
 			go func() {
-				walletToMasters, e := persistence.ReadWalletMasters()
+				walletToMasters, e := persistence.ReadWalletMasters(config)
 				if e != nil {
 					return
 				}
@@ -133,22 +137,22 @@ func InitUsdRateCache() (*cache.LoadableCache[any], error) {
 	go func() {
 		time.Sleep(20 * time.Minute)
 		for range ticker.C {
-			recalculateUsdRates(cacheManager)
+			recalculateUsdRates(config, cacheManager)
 		}
 	}()
 
 	return cacheManager, err
 }
 
-func recalculateUsdRates(cacheManager *cache.LoadableCache[any]) {
-	jettons, e := persistence.ReadClickhouseJettons()
+func recalculateUsdRates(config *core.Config, cacheManager *cache.LoadableCache[any]) {
+	jettons, e := persistence.ReadClickhouseJettons(config)
 	if e != nil {
 		log.Printf("Unable to read jetton from CH: %v \n", e)
 	}
 	log.Printf("Loaded %v jettons for rates updates \n", len(jettons))
 
 	writeBatch := func(jettonRates []*models.JettonRate) error {
-		return persistence.WriteToClickhouse(jettonRates, "jetton_rates", func(batch driver.Batch, m *models.JettonRate) error {
+		return persistence.WriteToClickhouse(config, jettonRates, "jetton_rates", func(batch driver.Batch, m *models.JettonRate) error {
 			return batch.Append(
 				m.Time,
 				m.Name,
@@ -187,8 +191,9 @@ func recalculateUsdRates(cacheManager *cache.LoadableCache[any]) {
 	writeBatch(jettonRates)
 }
 
-func InitWalletJettonCache() (*cache.LoadableCache[any], error) {
+func InitWalletJettonCache(config *core.Config) (*cache.LoadableCache[any], error) {
 	return initCache[models.WalletJetton](
+		config,
 		"wallet_to_master",
 		func(key any) (*models.WalletJetton, error) {
 			tonApi, e := GetTonApi()
@@ -210,7 +215,7 @@ func InitWalletJettonCache() (*cache.LoadableCache[any], error) {
 			)
 		},
 		func(cacheManager *cache.LoadableCache[any]) error {
-			walletToMasters, e := persistence.ReadWalletMasters()
+			walletToMasters, e := persistence.ReadWalletMasters(config)
 			if e != nil {
 				return e
 			}
