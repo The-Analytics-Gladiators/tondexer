@@ -102,6 +102,41 @@ func ReadWalletMasters(config *core.Config) ([]models.WalletJetton, error) {
 	return result, nil
 }
 
+type SummaryStats struct {
+	Volume       uint64 `ch:"volume" json:"volume"`
+	Number       uint64 `ch:"number" json:"number"`
+	UniqueTokens uint64 `ch:"unique_tokens" json:"unique_tokens"`
+	UniqueUsers  uint64 `ch:"unique_users" json:"unique_users"`
+}
+
+func ReadSummaryStats(config *core.Config, period models.Period) (*SummaryStats, error) {
+	conn, err := connection(config)
+	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Close()
+	periodParams := models.PeriodParamsMap[period]
+
+	row := conn.QueryRow(context.Background(), fmt.Sprintf(`
+SELECT
+    toUInt64(sum(%v) + sum(%v)) AS volume,
+    count() AS number,
+    length(groupUniqArrayArray([jetton_in, jetton_out])) AS unique_tokens,
+    uniq(sender) AS unique_users
+FROM %v.swaps
+WHERE time >= %v(subtractDays(now(), %v))`, UsdInField, UsdOutField,
+		config.DbName, periodParams.ToStartOf, periodParams.WindowInDays))
+
+	var stats SummaryStats
+	err = row.ScanStruct(&stats)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
+}
+
 func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) error {
 	conn, err := connection(config)
 
@@ -164,4 +199,35 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 		}
 		return nil
 	}
+}
+
+func ReadArrayFromClickhouse[T any](config *core.Config, query string) ([]T, error) {
+	conn, err := connection(config)
+	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Close()
+
+	rows, err := conn.Query(context.Background(), query)
+
+	defer func() {
+		if rows != nil {
+			rows.Close()
+		}
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	var ts []T
+	for rows.Next() {
+		var t T
+		if e := rows.ScanStruct(&t); e != nil {
+			return nil, e
+		}
+		ts = append(ts, t)
+	}
+
+	return ts, nil
 }

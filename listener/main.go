@@ -17,10 +17,10 @@ import (
 
 func main() {
 	var cfg core.Config
+
 	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
 		panic(err)
 	}
-
 	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg)
 	if e != nil {
 		panic(e)
@@ -36,12 +36,11 @@ func main() {
 		panic(e)
 	}
 
-	consoleToken := os.Getenv("CONSOLE_TOKEN")
-	streamingApi := tonapi.NewStreamingAPI(tonapi.WithStreamingToken(consoleToken))
+	streamingApi := tonapi.NewStreamingAPI(tonapi.WithStreamingToken(cfg.ConsoleToken))
 
 	accounts := []string{stonfi.StonfiRouter}
 
-	client, _ := tonapi.New(tonapi.WithToken(consoleToken))
+	client, _ := tonapi.New(tonapi.WithToken(cfg.ConsoleToken))
 	incomingTransactionsChannel := make(chan string)
 
 	go func() {
@@ -115,6 +114,7 @@ func main() {
 				params := tonapi.GetTraceParams{TraceID: transactionHash}
 				trace, e := client.GetTrace(context.Background(), params)
 				if e != nil {
+					log.Printf("Unable to get trace %v \n", e)
 					continue
 				}
 				for _, transaction := range stonfi.GetAllTransactionsFromTrace(trace) {
