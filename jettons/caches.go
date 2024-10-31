@@ -131,7 +131,7 @@ func InitUsdRateCache() (*cache.LoadableCache[any], error) {
 	ticker := time.NewTicker(1 * time.Hour)
 
 	go func() {
-		time.Sleep(2 * time.Minute)
+		time.Sleep(20 * time.Minute)
 		for range ticker.C {
 			recalculateUsdRates(cacheManager)
 		}

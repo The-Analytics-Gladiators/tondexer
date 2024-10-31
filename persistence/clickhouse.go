@@ -101,37 +101,24 @@ func ReadWalletMasters() ([]models.WalletJetton, error) {
 	return result, nil
 }
 
-func ReadStonfiRouterWallets() ([]string, error) {
-	conn, err := connection()
-	if err != nil {
-		return nil, err
-	}
-
-	defer conn.Close()
-
-	var result []struct {
-		Token string `ch:"token"`
-	}
-
-	if err = conn.Select(context.Background(), &result, `
-		SELECT DISTINCT tokens AS token
-		FROM
-		(
-			SELECT [token_in, token_out] AS tokens
-			FROM swaps
-		)
-		ARRAY JOIN tokens`); err != nil {
-		return nil, err
-	}
-
-	var strings []string
-
-	for _, row := range result {
-		strings = append(strings, row.Token)
-	}
-
-	return strings, nil
-}
+//func ReadLastSwaps(limit uint64) ([]models.SwapCH, error) {
+//	conn, err := connection()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	defer conn.Close()
+//
+//	var result []models.SwapCH
+//
+//	if err = conn.Select(context.Background(), &result,
+//		//`SELECT * FROM swaps ORDER BY time DESC limit `+strconv.FormatUint(limit, 10)); err != nil {
+//		`SELECT * FROM swaps`); err != nil {
+//		return nil, err
+//	}
+//
+//	return result, nil
+//}
 
 func SaveSwapsToClickhouse(modelsBatch []*models.SwapCH) error {
 	conn, err := connection()

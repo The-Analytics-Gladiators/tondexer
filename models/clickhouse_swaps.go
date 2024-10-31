@@ -3,25 +3,25 @@ package models
 import "time"
 
 type SwapCH struct {
-	Dex               string
-	Hashes            []string
-	Lt                uint64
-	Time              time.Time
-	JettonIn          string
-	AmountIn          uint64
-	JettonInSymbol    string
-	JettonInName      string
-	JettonInUsdRate   float64
-	JettonInDecimals  uint64
-	JettonOut         string
-	AmountOut         uint64
-	JettonOutSymbol   string
-	JettonOutName     string
-	JettonOutUsdRate  float64
-	JettonOutDecimals uint64
-	MinAmountOut      uint64
-	Sender            string
-	ReferralAddress   string
-	ReferralAmount    uint64
-	CatchTime         time.Time
+	Dex               string    `ch:"dex"`
+	Hashes            []string  `ch:"hashes"`
+	Lt                uint64    `ch:"lt"`
+	Time              time.Time `ch:"time"`
+	JettonIn          string    `ch:"jetton_in"`
+	AmountIn          uint64    `ch:"amount_in"`
+	JettonInSymbol    string    `ch:"jetton_in_symbol"`
+	JettonInName      string    `ch:"jetton_in_name"`
+	JettonInUsdRate   float64   `ch:"jetton_in_usd_rate"`
+	JettonInDecimals  uint64    `ch:"jetton_in_decimals"`
+	JettonOut         string    `ch:"jetton_out"`
+	AmountOut         uint64    `ch:"amount_out"`
+	JettonOutSymbol   string    `ch:"jetton_out_symbol"`
+	JettonOutName     string    `ch:"jetton_out_name"`
+	JettonOutUsdRate  float64   `ch:"jetton_out_usd_rate"`
+	JettonOutDecimals uint64    `ch:"jetton_out_decimals"`
+	MinAmountOut      uint64    `ch:"min_amount_out"`
+	Sender            string    `ch:"sender"`
+	ReferralAddress   string    `ch:"referral_address"`
+	ReferralAmount    uint64    `ch:"referral_amount"`
+	CatchTime         time.Time `ch:"catch_time"`
 }
