@@ -10,4 +10,4 @@ RUN go build -o web_app web/main.go
 FROM debian:latest
 WORKDIR /app
 COPY --from=builder /app/web_app .
-CMD ["./web_app"]
+ENTRYPOINT ["./web_app"]

@@ -10,4 +10,4 @@ RUN go build -o listener_app listener/main.go
 FROM debian:latest
 WORKDIR /app
 COPY --from=builder /app/listener_app .
-CMD [".//listener_app"]
+ENTRYPOINT ["./listener_app"]
