@@ -117,7 +117,7 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 		}
 	}(conn)
 
-	batch, err := conn.PrepareBatch(context.Background(), fmt.Sprintf("INSERT INTO %v.swaps"))
+	batch, err := conn.PrepareBatch(context.Background(), fmt.Sprintf("INSERT INTO %v.swaps", config.DbName))
 	if err != nil {
 		fmt.Printf("Unable to create batch  %v \n", err)
 		return err
