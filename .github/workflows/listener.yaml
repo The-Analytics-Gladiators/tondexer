@@ -24,6 +24,6 @@ jobs:
           file: Dockerfile_listener
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/blackmorse/tonarb/tonarb-listener:latest
+          tags: ghcr.io/the-analytics-gladiators/tondexer/tondexer-listener:latest
           secrets: |
             GIT_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}

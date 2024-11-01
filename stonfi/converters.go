@@ -1,9 +1,9 @@
 package stonfi
 
 import (
-	"TonArb/jettons"
-	"TonArb/models"
 	"log"
+	"tondexer/jettons"
+	"tondexer/models"
 )
 
 func ToChSwap(swap *StonfiV1Swap,

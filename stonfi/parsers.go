@@ -1,7 +1,6 @@
 package stonfi
 
 import (
-	"TonArb/models"
 	"encoding/hex"
 	"errors"
 	"github.com/tonkeeper/tonapi-go"
@@ -9,6 +8,7 @@ import (
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
 	"time"
+	"tondexer/models"
 )
 
 const SwapOpCode = 630424929

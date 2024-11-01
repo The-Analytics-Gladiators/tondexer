@@ -1,9 +1,9 @@
 package persistence
 
 import (
-	"TonArb/core"
 	"fmt"
 	"time"
+	"tondexer/core"
 )
 
 const UsdInField = "(amount_in / pow(10, jetton_in_decimals)) * jetton_in_usd_rate"

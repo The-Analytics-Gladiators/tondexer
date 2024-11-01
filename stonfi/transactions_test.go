@@ -1,13 +1,13 @@
 package stonfi
 
 import (
-	"TonArb/core"
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"slices"
 	"testing"
+	"tondexer/core"
 )
 
 func TestFindRouterNotificationNodes(t *testing.T) {

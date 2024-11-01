@@ -1,9 +1,6 @@
 package jettons
 
 import (
-	"TonArb/core"
-	"TonArb/models"
-	"TonArb/persistence"
 	"context"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/eko/gocache/lib/v4/cache"
@@ -11,6 +8,9 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 	"log"
 	"time"
+	"tondexer/core"
+	"tondexer/models"
+	"tondexer/persistence"
 )
 
 func initCache[T any](

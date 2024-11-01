@@ -1,4 +1,4 @@
-module TonArb
+module tondexer
 
 go 1.23.1
 

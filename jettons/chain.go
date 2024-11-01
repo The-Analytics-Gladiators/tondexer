@@ -1,7 +1,6 @@
 package jettons
 
 import (
-	"TonArb/core"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -12,6 +11,7 @@ import (
 	cell2 "github.com/xssnick/tonutils-go/tvm/cell"
 	"strconv"
 	"time"
+	"tondexer/core"
 )
 
 type ChainTokenInfo struct {

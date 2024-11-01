@@ -1,18 +1,18 @@
 package main
 
 import (
-	"TonArb/core"
-	"TonArb/jettons"
-	"TonArb/persistence"
-	"TonArb/stonfi"
 	"context"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/tonkeeper/tonapi-go"
 	"log"
 	"os"
 	"time"
+	"tondexer/core"
+	"tondexer/jettons"
+	"tondexer/persistence"
+	"tondexer/stonfi"
 
-	"TonArb/models"
+	"tondexer/models"
 )
 
 func main() {

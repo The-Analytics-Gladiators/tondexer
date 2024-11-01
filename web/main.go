@@ -1,13 +1,13 @@
 package main
 
 import (
-	"TonArb/core"
-	"TonArb/models"
-	"TonArb/persistence"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/ilyakaznacheev/cleanenv"
 	"os"
+	"tondexer/core"
+	"tondexer/models"
+	"tondexer/persistence"
 )
 
 type PeriodRequest struct {

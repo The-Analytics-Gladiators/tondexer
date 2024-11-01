@@ -1,12 +1,12 @@
 package core
 
 import (
-	"TonArb/models"
 	"context"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"log"
 	"time"
+	"tondexer/models"
 )
 
 type TonClient struct {

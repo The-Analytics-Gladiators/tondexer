@@ -1,8 +1,6 @@
 package jettons
 
 import (
-	"TonArb/core"
-	"TonArb/models"
 	"context"
 	"errors"
 	"github.com/sethvargo/go-retry"
@@ -11,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"tondexer/core"
+	"tondexer/models"
 )
 
 func findElementByText(n *html.Node, searchText string) *html.Node {

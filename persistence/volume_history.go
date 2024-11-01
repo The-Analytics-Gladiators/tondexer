@@ -1,10 +1,10 @@
 package persistence
 
 import (
-	"TonArb/core"
-	"TonArb/models"
 	"fmt"
 	"time"
+	"tondexer/core"
+	"tondexer/models"
 )
 
 type VolumeHistoryEntry struct {

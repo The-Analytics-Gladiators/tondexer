@@ -1,6 +1,6 @@
 package jettons
 
-import "TonArb/models"
+import "tondexer/models"
 
 func JettonInfoByMaster(master string) (*ChainTokenInfo, error) {
 	chainTokenInfo, e := TokenDefinitionByMasterRetries(master, 4)

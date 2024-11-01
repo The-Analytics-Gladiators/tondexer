@@ -1,13 +1,13 @@
 package persistence
 
 import (
-	"TonArb/core"
-	"TonArb/models"
 	"context"
 	"fmt"
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"log"
+	"tondexer/core"
+	"tondexer/models"
 )
 
 func connection(config *core.Config) (driver.Conn, error) {
