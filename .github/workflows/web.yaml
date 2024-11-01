@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - web/**
+      - listener/**
 
 jobs:
   build-listener-docker:
@@ -23,9 +23,9 @@ jobs:
       - name: build and push
         uses: docker/build-push-action@v6
         with:
-          file: Dockerfile_listener
+          file: Dockerfile_web
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/the-analytics-gladiators/tondexer/tondexer-listener:latest
+          tags: ghcr.io/the-analytics-gladiators/tondexer/tondexer-web:latest
           secrets: |
             GIT_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}

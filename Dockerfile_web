@@ -9,5 +9,6 @@ RUN go build -o web_app web/main.go
 
 FROM debian:latest
 WORKDIR /app
+RUN apt-get update && apt-get install -y ca-certificates
 COPY --from=builder /app/web_app .
 ENTRYPOINT ["./web_app"]
