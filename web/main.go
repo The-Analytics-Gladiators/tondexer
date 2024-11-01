@@ -22,9 +22,9 @@ func main() {
 
 	route := gin.Default()
 
-	route.GET("/summary", summary(&cfg))
-	route.GET("/swaps/latest", latestSwaps(&cfg))
-	route.GET("/volumeHistory", periodArrayRequest(&cfg, func(config *core.Config, period models.Period) ([]persistence.VolumeHistoryEntry, error) {
+	route.GET("/api/summary", summary(&cfg))
+	route.GET("/api/swaps/latest", latestSwaps(&cfg))
+	route.GET("/api/volumeHistory", periodArrayRequest(&cfg, func(config *core.Config, period models.Period) ([]persistence.VolumeHistoryEntry, error) {
 		return persistence.ReadArrayFromClickhouse[persistence.VolumeHistoryEntry](config, persistence.VolumeHistorySqlQuery(config, period))
 	}))
 
