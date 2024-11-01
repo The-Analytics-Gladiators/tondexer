@@ -9,5 +9,6 @@ RUN go build -o listener_app listener/main.go
 
 FROM debian:latest
 WORKDIR /app
+RUN apt-get update && apt-get install -y ca-certificates
 COPY --from=builder /app/listener_app .
 ENTRYPOINT ["./listener_app"]
