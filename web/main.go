@@ -27,6 +27,24 @@ func main() {
 	route.GET("/api/volumeHistory", periodArrayRequest(&cfg, func(config *core.Config, period models.Period) ([]persistence.VolumeHistoryEntry, error) {
 		return persistence.ReadArrayFromClickhouse[persistence.VolumeHistoryEntry](config, persistence.VolumeHistorySqlQuery(config, period))
 	}))
+	route.GET("/api/swaps/top", periodArrayRequest(&cfg, func(config *core.Config, period models.Period) ([]persistence.EnrichedSwapCH, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.EnrichedSwapCH](config, persistence.TopSwapsSqlQuery(config, period))
+	}))
+	route.GET("/api/pools/top", periodArrayRequest[persistence.PoolVolume](&cfg, func(config *core.Config, period models.Period) ([]persistence.PoolVolume, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.PoolVolume](&cfg, persistence.TopPoolsRequest(config, period))
+	}))
+	route.GET("api/jettons/top", periodArrayRequest[persistence.JettonVolume](&cfg, func(config *core.Config, period models.Period) ([]persistence.JettonVolume, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.JettonVolume](&cfg, persistence.TopJettonRequest(config, period))
+	}))
+	route.GET("/api/users/top", periodArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period) ([]persistence.UserVolume, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopUsersRequest(config, period))
+	}))
+	route.GET("/api/referrers/top", periodArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period) ([]persistence.UserVolume, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopReferrersRequest(config, period))
+	}))
+	route.GET("/api/profiters/top", periodArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period) ([]persistence.UserVolume, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopUsersProfiters(config, period))
+	}))
 
 	route.Run(":8088")
 }
@@ -67,7 +85,7 @@ func latestSwaps(cfg *core.Config) func(c *gin.Context) {
 			return
 		}
 
-		swaps, e := persistence.ReadArrayFromClickhouse[persistence.EnrichedSwapCH](cfg, persistence.LastSwapsSqlQuery(cfg, request.Limit))
+		swaps, e := persistence.ReadArrayFromClickhouse[persistence.EnrichedSwapCH](cfg, persistence.LatestSwapsSqlQuery(cfg, request.Limit))
 
 		if e != nil {
 			c.JSON(200, gin.H{"msg": e.Error()})
