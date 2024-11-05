@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+type SwapInfo struct {
+	Notification *SwapTransferNotification
+	Payment      *PayoutRequest
+	Referral     *PayoutRequest
+	PoolAddress  string
+}
+
 type SwapTransferNotification struct {
 	Hash            string
 	Lt              uint64
@@ -27,7 +34,7 @@ func (tn *SwapTransferNotification) String() string {
 		tn.MinOut, tn.ToAddress, tn.ReferralAddress, tn.Hash)
 }
 
-type PaymentRequest struct {
+type PayoutRequest struct {
 	Hash            string
 	Lt              uint64
 	TransactionTime time.Time
@@ -41,8 +48,8 @@ type PaymentRequest struct {
 	Token1Address   *address.Address
 }
 
-func (pr *PaymentRequest) String() string {
-	return fmt.Sprintf("PaymentRequest(Lt: %v, TransactionTime: %v, QueryId: %v, Owner: %v, ExitCode: %v, Amount0Out: %v, "+
+func (pr *PayoutRequest) String() string {
+	return fmt.Sprintf("PayoutRequest(Lt: %v, TransactionTime: %v, QueryId: %v, Owner: %v, ExitCode: %v, Amount0Out: %v, "+
 		"Token0Address: %v, Amount1Out: %v, Token1Address: %v, Hash: %v)",
 		pr.Lt, pr.TransactionTime, pr.QueryId, pr.Owner, pr.ExitCode, pr.Amount0Out,
 		pr.Token0Address, pr.Amount1Out, pr.Token1Address, pr.Hash)

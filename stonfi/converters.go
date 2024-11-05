@@ -6,7 +6,8 @@ import (
 	"tondexer/models"
 )
 
-func ToChSwap(swap *StonfiV1Swap,
+func ToChSwap(swap *models.SwapInfo,
+	dex string,
 	cache func(string) *jettons.ChainTokenInfo,
 	rateCache func(string) *float64) *models.SwapCH {
 
@@ -94,7 +95,7 @@ func ToChSwap(swap *StonfiV1Swap,
 	}
 
 	return &models.SwapCH{
-		Dex:               "StonfiV1",
+		Dex:               dex,
 		Hashes:            hashes,
 		Lt:                swap.Notification.Lt,
 		Time:              swap.Notification.TransactionTime,
@@ -112,7 +113,7 @@ func ToChSwap(swap *StonfiV1Swap,
 		JettonOutDecimals: uint64(tokenOutDecimals),
 		MinAmountOut:      swap.Notification.MinOut,
 		PoolAddress:       swap.PoolAddress,
-		Sender:            swap.Notification.ToAddress.String(),
+		Sender:            swap.Notification.Sender.String(),
 		ReferralAddress:   referralAddress,
 		ReferralAmount:    referralAmount,
 		CatchTime:         swap.Notification.EventCatchTime,

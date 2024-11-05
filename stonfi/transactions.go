@@ -10,20 +10,13 @@ import (
 	"tondexer/models"
 )
 
-type StonfiV1Swap struct {
-	Notification *models.SwapTransferNotification
-	Payment      *models.PaymentRequest
-	Referral     *models.PaymentRequest
-	PoolAddress  string
-}
-
 type RelatedEvents[Notification any, Payment any] struct {
 	Notification *Notification
 	Payments     []*Payment
 	Pool         *address.Address
 }
 
-func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*StonfiV1Swap {
+func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*models.SwapInfo {
 	var swaps []RelatedEvents[tonapi.Trace, tonapi.Trace]
 
 	var findNextSwap func(trace *tonapi.Trace)
@@ -48,14 +41,14 @@ func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*StonfiV1Swap {
 	}
 	findNextSwap(trace)
 
-	stonfiSwaps := core.Map(swaps, func(re RelatedEvents[tonapi.Trace, tonapi.Trace]) *StonfiV1Swap {
-		return relatedEventsToStonfiSwap(re)
+	stonfiSwaps := core.Map(swaps, func(re RelatedEvents[tonapi.Trace, tonapi.Trace]) *models.SwapInfo {
+		return relatedEventsToSwapInfo(re)
 	})
 
-	return core.Filter(stonfiSwaps, func(swap *StonfiV1Swap) bool { return swap != nil })
+	return core.Filter(stonfiSwaps, func(swap *models.SwapInfo) bool { return swap != nil })
 }
 
-func relatedEventsToStonfiSwap(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Trace]) *StonfiV1Swap {
+func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Trace]) *models.SwapInfo {
 	if relatedEvents.Notification == nil {
 		log.Printf("Warning: no notification at relatedEvents \n")
 		return nil
@@ -73,15 +66,15 @@ func relatedEventsToStonfiSwap(relatedEvents RelatedEvents[tonapi.Trace, tonapi.
 		return nil
 	}
 
-	allPayments := core.Map(relatedEvents.Payments, func(trace *tonapi.Trace) *models.PaymentRequest {
+	allPayments := core.Map(relatedEvents.Payments, func(trace *tonapi.Trace) *models.PayoutRequest {
 		if request, e := PaymentRequestFromTrace(trace); e == nil {
 			return request
 		}
 		return nil
 	})
-	allPayments = core.Filter(allPayments, func(payment *models.PaymentRequest) bool { return payment != nil })
+	allPayments = core.Filter(allPayments, func(payment *models.PayoutRequest) bool { return payment != nil })
 
-	paymentIndex := slices.IndexFunc(allPayments, func(request *models.PaymentRequest) bool {
+	paymentIndex := slices.IndexFunc(allPayments, func(request *models.PayoutRequest) bool {
 		return request.ExitCode == SwapOkPaymentCode
 	})
 	if paymentIndex == -1 {
@@ -89,10 +82,10 @@ func relatedEventsToStonfiSwap(relatedEvents RelatedEvents[tonapi.Trace, tonapi.
 		return nil
 	}
 	payment := allPayments[paymentIndex]
-	refPaymentIndex := slices.IndexFunc(allPayments, func(request *models.PaymentRequest) bool {
+	refPaymentIndex := slices.IndexFunc(allPayments, func(request *models.PayoutRequest) bool {
 		return request.ExitCode == SwapRefPaymentCode
 	})
-	result := &StonfiV1Swap{
+	result := &models.SwapInfo{
 		Notification: notification,
 		Payment:      payment,
 	}

@@ -11,9 +11,17 @@ import (
 	"tondexer/jettons"
 	"tondexer/persistence"
 	"tondexer/stonfi"
+	"tondexer/stonfiv2"
 
 	"tondexer/models"
 )
+
+const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
+
+type IncomingHash struct {
+	Hash string
+	Dex  string
+}
 
 func main() {
 	var cfg core.Config
@@ -38,20 +46,26 @@ func main() {
 
 	streamingApi := tonapi.NewStreamingAPI(tonapi.WithStreamingToken(cfg.ConsoleToken))
 
-	accounts := []string{stonfi.StonfiRouter}
+	stonfiV1Accounts := []string{stonfi.StonfiRouter}
+	stonfiV2Accounts := []string{StonfiRouterV2}
 
 	client, _ := tonapi.New(tonapi.WithToken(cfg.ConsoleToken))
-	incomingTransactionsChannel := make(chan string)
+	incomingTransactionsChannel := make(chan *IncomingHash)
 
 	go func() {
 		for {
 			e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
 				ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
 					log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
-					//go tonClient.FetchRawTransactionFromHashToChannel(&data, rawTransactionWithHashChannel)
-					go func() { incomingTransactionsChannel <- data.TxHash }()
+					go func() {
+						incomingHash := &IncomingHash{
+							Hash: data.TxHash,
+							Dex:  "StonfiV2",
+						}
+						incomingTransactionsChannel <- incomingHash
+					}()
 				})
-				if err := ws.SubscribeToTransactions(accounts, nil); err != nil {
+				if err := ws.SubscribeToTransactions(stonfiV2Accounts, nil); err != nil {
 					return err
 				}
 				return nil
@@ -62,9 +76,33 @@ func main() {
 		}
 	}()
 
-	readyTransactionsChannel := make(chan []string)
+	go func() {
+		for {
+			e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
+				ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
+					log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
+					go func() {
+						incomingHash := &IncomingHash{
+							Hash: data.TxHash,
+							Dex:  "StonfiV1",
+						}
+						incomingTransactionsChannel <- incomingHash
+					}()
+				})
+				if err := ws.SubscribeToTransactions(stonfiV1Accounts, nil); err != nil {
+					return err
+				}
+				return nil
+			})
+			if e != nil {
+				log.Printf("Streaming failed! %v \n", e)
+			}
+		}
+	}()
 
-	transactionsWaitingList := &core.WaitingList[string]{
+	readyTransactionsChannel := make(chan []*IncomingHash)
+
+	transactionsWaitingList := &core.WaitingList[*IncomingHash]{
 		ExpirationSeconds: 40 * time.Second,
 	}
 	transactionsTicker := time.NewTicker(10 * time.Second)
@@ -108,10 +146,10 @@ func main() {
 		for transactionHashes := range readyTransactionsChannel {
 			var modelsCh []*models.SwapCH
 			for _, transactionHash := range transactionHashes {
-				if processedTransactions.Exists(transactionHash) {
+				if processedTransactions.Exists(transactionHash.Hash) {
 					continue
 				}
-				params := tonapi.GetTraceParams{TraceID: transactionHash}
+				params := tonapi.GetTraceParams{TraceID: transactionHash.Hash}
 				trace, e := client.GetTrace(context.Background(), params)
 				if e != nil {
 					log.Printf("Unable to get trace %v \n", e)
@@ -121,9 +159,15 @@ func main() {
 					processedTransactions.Add(transaction.Hash)
 				}
 
-				swaps := stonfi.ExtractStonfiSwapsFromRootTrace(trace)
-				modelsCh = append(modelsCh, core.Map(swaps, func(swap *stonfi.StonfiV1Swap) *models.SwapCH {
-					return stonfi.ToChSwap(swap, jettonInfoCacheFunction, usdRateCacheFunction)
+				var swaps []*models.SwapInfo
+				if transactionHash.Dex == "StonfiV1" {
+					swaps = stonfi.ExtractStonfiSwapsFromRootTrace(trace)
+				} else if transactionHash.Dex == "StonfiV2" {
+					swaps = stonfiv2.ExtractStonfiV2SwapsFromRootTrace(trace)
+				}
+
+				modelsCh = append(modelsCh, core.Map(swaps, func(swap *models.SwapInfo) *models.SwapCH {
+					return stonfi.ToChSwap(swap, transactionHash.Dex, jettonInfoCacheFunction, usdRateCacheFunction)
 				})...)
 
 			}

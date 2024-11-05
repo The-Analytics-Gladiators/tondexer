@@ -8,6 +8,7 @@ import (
 	"slices"
 	"testing"
 	"tondexer/core"
+	"tondexer/models"
 )
 
 func TestFindRouterNotificationNodes(t *testing.T) {
@@ -116,12 +117,12 @@ func TestExtractSwapsFromParallelSwaps(t *testing.T) {
 
 	assert.Equal(t, 2, len(swaps))
 
-	firstSwapIndex := slices.IndexFunc(swaps, func(swap *StonfiV1Swap) bool {
+	firstSwapIndex := slices.IndexFunc(swaps, func(swap *models.SwapInfo) bool {
 		return swap.Notification.Hash == "7abb04587405a0bc3047c8012653a2f9a2683c9a2de098835263fa7b1b2b9624"
 	})
 	firstSwap := swaps[firstSwapIndex]
 
-	secondSwapIndex := slices.IndexFunc(swaps, func(swap *StonfiV1Swap) bool {
+	secondSwapIndex := slices.IndexFunc(swaps, func(swap *models.SwapInfo) bool {
 		return swap.Notification.Hash == "3648ab7b96037d9983ef957ba019d6fdd4d5ba64fa95f790d550d49b6b4e65c3"
 	})
 	secondSwap := swaps[secondSwapIndex]
@@ -147,12 +148,12 @@ func TestExtractSwapFromConsequentSwaps(t *testing.T) {
 
 	assert.Equal(t, 2, len(swaps))
 
-	firstSwapIndex := slices.IndexFunc(swaps, func(swap *StonfiV1Swap) bool {
+	firstSwapIndex := slices.IndexFunc(swaps, func(swap *models.SwapInfo) bool {
 		return swap.Notification.Hash == "aa960e037a9b42b20dfb9b41344dae38365f7a90488d7e24f0914724b251011a"
 	})
 	firstSwap := swaps[firstSwapIndex]
 
-	secondSwapIndex := slices.IndexFunc(swaps, func(swap *StonfiV1Swap) bool {
+	secondSwapIndex := slices.IndexFunc(swaps, func(swap *models.SwapInfo) bool {
 		return swap.Notification.Hash == "d2668f071f74f70493e18d3957f3d260dc7d6eeee68e1759a6f43af1aad11e85"
 	})
 	secondSwap := swaps[secondSwapIndex]

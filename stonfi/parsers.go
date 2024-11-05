@@ -19,9 +19,8 @@ const TransferNotificationCode = 1935855772
 const PaymentRequestCode = 4181439551
 
 const StonfiRouter = "EQB3ncyBUTjZUA5EnFKR5_EnOMI9V1tTEAAPaiU71gc4TiUt"
-const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
 
-func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PaymentRequest, error) {
+func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PayoutRequest, error) {
 	transaction, e := ParseRawTransaction(trace.Transaction.Raw)
 	if e != nil {
 		return nil, e
@@ -47,7 +46,7 @@ func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PaymentRequest, error
 	amount1Out := ref.MustLoadCoins()
 	token1Address := ref.MustLoadAddr()
 
-	return &models.PaymentRequest{
+	return &models.PayoutRequest{
 		Hash:            trace.Transaction.Hash,
 		Lt:              message.CreatedLT,
 		TransactionTime: time.UnixMilli(trace.Transaction.Utime * 1000),
@@ -62,7 +61,7 @@ func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PaymentRequest, error
 	}, nil
 }
 
-func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.PaymentRequest {
+func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.PayoutRequest {
 	cll := message.Body.BeginParse()
 
 	msgCode := cll.MustLoadUInt(32) // Message code
@@ -84,7 +83,7 @@ func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWith
 	amount1Out := ref.MustLoadCoins()
 	token1Address := ref.MustLoadAddr()
 
-	return &models.PaymentRequest{
+	return &models.PayoutRequest{
 		Hash:            rawTransactionWithHash.Hash,
 		Lt:              rawTransactionWithHash.Lt,
 		TransactionTime: rawTransactionWithHash.TransactionTime,
