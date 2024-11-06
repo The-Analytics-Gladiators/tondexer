@@ -33,7 +33,7 @@ func ExtractStonfiV2SwapsFromRootTrace(trace *tonapi.Trace) []*models.SwapInfo {
 }
 
 type NotificationJsonBody struct {
-	QueryID        int64          `json:"query_id"`
+	QueryID        uint64         `json:"query_id"`
 	Amount         string         `json:"amount"`
 	Sender         string         `json:"sender"`
 	ForwardPayload ForwardPayload `json:"forward_payload"`
@@ -104,7 +104,7 @@ func parseTraceNotification(notification *tonapi.Trace) (*models.SwapTransferNot
 }
 
 type PayoutJsonBody struct {
-	QueryID         int64          `json:"query_id"`
+	QueryID         uint64         `json:"query_id"`
 	ToAddress       string         `json:"to_address"`
 	ExcessesAddress string         `json:"excesses_address"`
 	OriginalCaller  string         `json:"original_caller"`
@@ -151,7 +151,7 @@ func parseTracePayout(payout *tonapi.Trace) (*models.PayoutRequest, error) {
 }
 
 type VaultPayoutJsonBody struct {
-	QueryID         int64                     `json:"query_id"`
+	QueryID         uint64                    `json:"query_id"`
 	Owner           string                    `json:"owner"`
 	ExcessesAddress string                    `json:"excesses_address"`
 	AdditionalInfo  VaultPayoutAdditionalInfo `json:"additional_info"`
@@ -196,12 +196,12 @@ func parseTraceVaultPayout(vaultPayout *tonapi.Trace) (*models.PayoutRequest, er
 func swapTracesToSwapInfo(swapTraces *SwapTraces) *models.SwapInfo {
 	swapTransferNotification, err := parseTraceNotification(swapTraces.Notification)
 	if err != nil {
-		log.Printf("error parsing notification info for trace %v \n", swapTraces.Notification.Transaction.Hash)
+		log.Printf("error parsing notification info for trace %v: %v \n", swapTraces.Notification.Transaction.Hash, err)
 		return nil
 	}
 	payout, err := parseTracePayout(swapTraces.Payout)
 	if err != nil {
-		log.Printf("error parsing payout for trace %v \n", swapTraces.Payout.Transaction.Hash)
+		log.Printf("error parsing payout for trace %v: %v \n", swapTraces.Payout.Transaction.Hash, err)
 		return nil
 	}
 
@@ -214,7 +214,7 @@ func swapTracesToSwapInfo(swapTraces *SwapTraces) *models.SwapInfo {
 	if swapTraces.VaultPayout != nil {
 		referral, err = parseTraceVaultPayout(swapTraces.VaultPayout)
 		if err != nil {
-			log.Printf("error parsing vault payout for trace %v \n", swapTraces.VaultPayout.Transaction.Hash)
+			log.Printf("error parsing vault payout for trace %v: %v \n", swapTraces.VaultPayout.Transaction.Hash, err)
 		}
 	}
 

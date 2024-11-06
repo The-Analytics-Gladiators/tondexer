@@ -48,13 +48,13 @@ func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, dex string, accounts
 func main() {
 	var cfg core.Config
 
-	consoleClient, _ := tonapi.New()
-	consoleApi := core.TonConsoleApi{Client: consoleClient}
+	freeConsoleClient, _ := tonapi.New() // free one for the rates
+	freeConsoleApi := core.TonConsoleApi{Client: freeConsoleClient}
 
 	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
 		panic(err)
 	}
-	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg, &consoleApi)
+	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg, &freeConsoleApi)
 	if e != nil {
 		panic(e)
 	}
@@ -64,7 +64,7 @@ func main() {
 		panic(e)
 	}
 
-	usdRateCache, err := jettons.InitUsdRateCache(&cfg, &consoleApi)
+	usdRateCache, err := jettons.InitUsdRateCache(&cfg, &freeConsoleApi)
 	if err != nil {
 		panic(e)
 	}
@@ -76,6 +76,7 @@ func main() {
 	v2RoutersChunks := core.ChunkArray(stonfiv2.Routers, 10)
 
 	client, _ := tonapi.New(tonapi.WithToken(cfg.ConsoleToken))
+	consoleApi := &core.TonConsoleApi{Client: client}
 	incomingTransactionsChannel := make(chan *IncomingHash)
 
 	go subscribeToAccounts(streamingApi, "StonfiV1", stonfiV1Accounts, incomingTransactionsChannel)
@@ -132,8 +133,7 @@ func main() {
 				if processedTransactions.Exists(transactionHash.Hash) {
 					continue
 				}
-				params := tonapi.GetTraceParams{TraceID: transactionHash.Hash}
-				trace, e := client.GetTrace(context.Background(), params)
+				trace, e := consoleApi.GetTraceByHash(transactionHash.Hash)
 				if e != nil {
 					log.Printf("Unable to get trace %v \n", e)
 					continue

@@ -15,15 +15,24 @@ type TonConsoleApi struct {
 	*tonapi.Client
 }
 
-func (api *TonConsoleApi) JettonInfoByMaster(master string) (*models.ChainTokenInfo, error) {
+func (api *TonConsoleApi) GetTraceByHash(hash string) (*tonapi.Trace, error) {
 	backoff := retry.WithMaxRetries(4, retry.NewExponential(1*time.Second))
-	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*models.ChainTokenInfo, error) {
-		internal, err := api.JettonInfoByMasterInternal(master)
+	params := tonapi.GetTraceParams{TraceID: hash}
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*tonapi.Trace, error) {
+		internal, err := api.GetTrace(context.Background(), params)
 		return internal, retry.RetryableError(err)
 	})
 }
 
-func (api *TonConsoleApi) JettonInfoByMasterInternal(master string) (*models.ChainTokenInfo, error) {
+func (api *TonConsoleApi) JettonInfoByMaster(master string) (*models.ChainTokenInfo, error) {
+	backoff := retry.WithMaxRetries(4, retry.NewExponential(1*time.Second))
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*models.ChainTokenInfo, error) {
+		internal, err := api.jettonInfoByMasterInternal(master)
+		return internal, retry.RetryableError(err)
+	})
+}
+
+func (api *TonConsoleApi) jettonInfoByMasterInternal(master string) (*models.ChainTokenInfo, error) {
 	params := tonapi.GetJettonInfoParams{
 		AccountID: master,
 	}
@@ -49,12 +58,12 @@ func (api *TonConsoleApi) JettonInfoByMasterInternal(master string) (*models.Cha
 func (api *TonConsoleApi) JettonRateToUsdByMaster(master string) (float64, error) {
 	backoff := retry.WithMaxRetries(4, retry.NewExponential(1*time.Second))
 	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (float64, error) {
-		internal, err := api.JettonRateToUsdByMasterInternal(master)
+		internal, err := api.jettonRateToUsdByMasterInternal(master)
 		return internal, retry.RetryableError(err)
 	})
 }
 
-func (api *TonConsoleApi) JettonRateToUsdByMasterInternal(master string) (float64, error) {
+func (api *TonConsoleApi) jettonRateToUsdByMasterInternal(master string) (float64, error) {
 	params := tonapi.GetRatesParams{
 		Tokens:     []string{master},
 		Currencies: []string{"usd"},

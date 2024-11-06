@@ -129,3 +129,15 @@ func Test_DoNotParseFailedTransaction(t *testing.T) {
 
 	assert.Equal(t, 0, len(swapInfos))
 }
+
+func Test_TransactionWithSmthFailed(t *testing.T) {
+	// in fact query id does not fit into int64 - only uint64
+	client, _ := tonapi.New()
+
+	params := tonapi.GetTraceParams{TraceID: "fd88effd16246914a578fddf8484ca3f919d94e6534e43ec5abb0674a0ce0c54"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapInfos := ExtractStonfiV2SwapsFromRootTrace(trace)
+
+	assert.Equal(t, 1, len(swapInfos))
+}
