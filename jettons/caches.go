@@ -63,19 +63,19 @@ func initCache[T any](
 	return cacheManager, nil
 }
 
-func InitJettonInfoCache(config *core.Config) (*cache.LoadableCache[any], error) {
-	return initCache[ChainTokenInfo](
+func InitJettonInfoCache(config *core.Config, api *core.TonConsoleApi) (*cache.LoadableCache[any], error) {
+	return initCache[models.ChainTokenInfo](
 		config,
 		"clickhouse_jetton",
-		func(key any) (*ChainTokenInfo, error) {
-			return JettonInfoByMaster(key.(string))
+		func(key any) (*models.ChainTokenInfo, error) {
+			return api.JettonInfoByMaster(key.(string))
 		},
-		func(batch driver.Batch, model *ChainTokenInfo) error {
+		func(batch driver.Batch, model *models.ChainTokenInfo) error {
 			return batch.Append(
 				model.Name,
 				model.Symbol,
 				model.JettonAddress,
-				uint64(model.Decimals),
+				model.Decimals,
 			)
 		},
 		func(cacheManager *cache.LoadableCache[any]) error {
@@ -85,10 +85,10 @@ func InitJettonInfoCache(config *core.Config) (*cache.LoadableCache[any], error)
 			}
 
 			for _, jetton := range chJettons {
-				if e := cacheManager.Set(context.Background(), jetton.Master, &ChainTokenInfo{
+				if e := cacheManager.Set(context.Background(), jetton.Master, &models.ChainTokenInfo{
 					Name:          jetton.Name,
 					Symbol:        jetton.Symbol,
-					Decimals:      uint(jetton.Decimals),
+					Decimals:      jetton.Decimals,
 					JettonAddress: jetton.Master,
 				}); e != nil {
 					log.Printf("Unable to set jetton cache entry %v \n", jetton)
@@ -98,16 +98,16 @@ func InitJettonInfoCache(config *core.Config) (*cache.LoadableCache[any], error)
 		})
 }
 
-func InitUsdRateCache(config *core.Config) (*cache.LoadableCache[any], error) {
+func InitUsdRateCache(config *core.Config, consoleApi *core.TonConsoleApi) (*cache.LoadableCache[any], error) {
 	cacheManager, err := initCache[float64](
 		config,
 		"",
 		func(key any) (*float64, error) {
-			jettonInfo, e := JettonInfoFromMasterPageRetries(key.(string), 4)
+			rate, e := consoleApi.JettonRateToUsdByMaster(key.(string))
 			if e != nil {
 				return nil, e
 			}
-			return &jettonInfo.TokenToUsd, nil
+			return &rate, nil
 		},
 		func(batch driver.Batch, model *float64) error { return nil },
 		func(cacheManager *cache.LoadableCache[any]) error {
@@ -137,14 +137,14 @@ func InitUsdRateCache(config *core.Config) (*cache.LoadableCache[any], error) {
 	go func() {
 		time.Sleep(20 * time.Minute)
 		for range ticker.C {
-			recalculateUsdRates(config, cacheManager)
+			recalculateUsdRates(config, consoleApi, cacheManager)
 		}
 	}()
 
 	return cacheManager, err
 }
 
-func recalculateUsdRates(config *core.Config, cacheManager *cache.LoadableCache[any]) {
+func recalculateUsdRates(config *core.Config, consoleApi *core.TonConsoleApi, cacheManager *cache.LoadableCache[any]) {
 	jettons, e := persistence.ReadClickhouseJettons(config)
 	if e != nil {
 		log.Printf("Unable to read jetton from CH: %v \n", e)
@@ -166,8 +166,8 @@ func recalculateUsdRates(config *core.Config, cacheManager *cache.LoadableCache[
 
 	var jettonRates []*models.JettonRate
 	for i, jetton := range jettons {
-		if jettonInfo, e := JettonInfoFromMasterPageRetries(jetton.Master, 4); e == nil {
-			if e := cacheManager.Set(context.Background(), jetton.Master, &jettonInfo.TokenToUsd); e != nil {
+		if rate, e := consoleApi.JettonRateToUsdByMaster(jetton.Master); e == nil {
+			if e := cacheManager.Set(context.Background(), jetton.Master, &rate); e != nil {
 				log.Printf("Unable to set jetton cache entry %v \n", jetton.Symbol)
 			}
 			jettonRate := &models.JettonRate{
@@ -176,7 +176,7 @@ func recalculateUsdRates(config *core.Config, cacheManager *cache.LoadableCache[
 				Symbol:   jetton.Symbol,
 				Master:   jetton.Master,
 				Decimals: jetton.Decimals,
-				Rate:     jettonInfo.TokenToUsd,
+				Rate:     rate,
 			}
 			jettonRates = append(jettonRates, jettonRate)
 		}

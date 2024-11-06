@@ -2,13 +2,12 @@ package stonfi
 
 import (
 	"log"
-	"tondexer/jettons"
 	"tondexer/models"
 )
 
 func ToChSwap(swap *models.SwapInfo,
 	dex string,
-	cache func(string) *jettons.ChainTokenInfo,
+	cache func(string) *models.ChainTokenInfo,
 	rateCache func(string) *float64) *models.SwapCH {
 
 	if swap.Notification == nil {
@@ -59,10 +58,10 @@ func ToChSwap(swap *models.SwapInfo,
 	tokenInInfo := cache(walletIn)
 
 	var tokenInUsdRate float64 = 0
-	var tokenInSymbol string = ""
-	var tokenInName string = ""
-	var jettonMasterIn string = ""
-	var tokenInDecimals uint = 9
+	var tokenInSymbol = ""
+	var tokenInName = ""
+	var jettonMasterIn = ""
+	var tokenInDecimals uint64 = 9
 
 	if tokenInInfo != nil {
 		rate := rateCache(tokenInInfo.JettonAddress)
@@ -78,10 +77,10 @@ func ToChSwap(swap *models.SwapInfo,
 	tokenOutInfo := cache(walletOut)
 
 	var tokenOutUsdRate float64 = 0
-	var tokenOutSymbol string = ""
-	var tokenOutName string = ""
+	var tokenOutSymbol = ""
+	var tokenOutName = ""
 	var jettonMasterOut string
-	var tokenOutDecimals uint = 9
+	var tokenOutDecimals uint64 = 9
 
 	if tokenOutInfo != nil {
 		rate := rateCache(tokenOutInfo.JettonAddress)
@@ -104,13 +103,13 @@ func ToChSwap(swap *models.SwapInfo,
 		JettonInSymbol:    tokenInSymbol,
 		JettonInName:      tokenInName,
 		JettonInUsdRate:   tokenInUsdRate,
-		JettonInDecimals:  uint64(tokenInDecimals),
+		JettonInDecimals:  tokenInDecimals,
 		JettonOut:         jettonMasterOut,
 		AmountOut:         amountOut,
 		JettonOutSymbol:   tokenOutSymbol,
 		JettonOutName:     tokenOutName,
 		JettonOutUsdRate:  tokenOutUsdRate,
-		JettonOutDecimals: uint64(tokenOutDecimals),
+		JettonOutDecimals: tokenOutDecimals,
 		MinAmountOut:      swap.Notification.MinOut,
 		PoolAddress:       swap.PoolAddress,
 		Sender:            swap.Notification.Sender.String(),

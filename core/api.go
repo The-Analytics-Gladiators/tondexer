@@ -2,40 +2,73 @@ package core
 
 import (
 	"context"
+	"errors"
+	"github.com/sethvargo/go-retry"
 	"github.com/tonkeeper/tonapi-go"
-	"github.com/xssnick/tonutils-go/address"
 	"log"
+	"strconv"
 	"time"
 	"tondexer/models"
 )
 
-type TonClient struct {
+type TonConsoleApi struct {
 	*tonapi.Client
 }
 
-func (client *TonClient) FetchRawTransactionFromHashToChannel(data *tonapi.TransactionEventData, chnl chan *models.RawTransactionWithHash) {
-	if rawTransaction, e := client.FetchRawTransactionFromHash(data); e != nil {
-		log.Printf("Smth wrong with getting raw transaction, %v \n", e)
-	} else {
-		chnl <- &models.RawTransactionWithHash{
-			RawTransaction:  rawTransaction,
-			Hash:            data.TxHash,
-			Lt:              data.Lt,
-			TransactionTime: time.Now(),
-			CatchEventTime:  time.Now(),
-		}
-	}
+func (api *TonConsoleApi) JettonInfoByMaster(master string) (*models.ChainTokenInfo, error) {
+	backoff := retry.WithMaxRetries(4, retry.NewExponential(1*time.Second))
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*models.ChainTokenInfo, error) {
+		internal, err := api.JettonInfoByMasterInternal(master)
+		return internal, retry.RetryableError(err)
+	})
 }
 
-func (client *TonClient) FetchRawTransactionFromHash(data *tonapi.TransactionEventData) (*tonapi.GetRawTransactionsOK, error) {
-	addr := address.MustParseRawAddr(data.AccountID.String())
-
-	params := tonapi.GetRawTransactionsParams{
-		Hash:      data.TxHash,
-		AccountID: addr.String(),
-		Lt:        int64(data.Lt),
-		Count:     100,
+func (api *TonConsoleApi) JettonInfoByMasterInternal(master string) (*models.ChainTokenInfo, error) {
+	params := tonapi.GetJettonInfoParams{
+		AccountID: master,
+	}
+	jettonInfo, e := api.GetJettonInfo(context.Background(), params)
+	if e != nil {
+		return nil, e
 	}
 
-	return client.GetRawTransactions(context.Background(), params)
+	decimals, e := strconv.ParseUint(jettonInfo.Metadata.Decimals, 10, 64)
+	if e != nil {
+		decimals = 9
+		log.Printf("Error parsing decimals for %v: %v \n", master, e)
+	}
+
+	return &models.ChainTokenInfo{
+		Name:          jettonInfo.Metadata.Name,
+		Symbol:        jettonInfo.Metadata.Symbol,
+		Decimals:      decimals,
+		JettonAddress: master,
+	}, nil
+}
+
+func (api *TonConsoleApi) JettonRateToUsdByMaster(master string) (float64, error) {
+	backoff := retry.WithMaxRetries(4, retry.NewExponential(1*time.Second))
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (float64, error) {
+		internal, err := api.JettonRateToUsdByMasterInternal(master)
+		return internal, retry.RetryableError(err)
+	})
+}
+
+func (api *TonConsoleApi) JettonRateToUsdByMasterInternal(master string) (float64, error) {
+	params := tonapi.GetRatesParams{
+		Tokens:     []string{master},
+		Currencies: []string{"usd"},
+	}
+
+	rates, e := api.GetRates(context.Background(), params)
+	if e != nil {
+		return 0, e
+	}
+	if tokenRates, exists := rates.Rates[master]; exists {
+		if rate, exists2 := tokenRates.Prices.Value["USD"]; exists2 {
+			return rate, nil
+		}
+	}
+
+	return 0, errors.New("no usd rate for master " + master)
 }

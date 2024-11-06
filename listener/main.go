@@ -48,10 +48,13 @@ func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, dex string, accounts
 func main() {
 	var cfg core.Config
 
+	consoleClient, _ := tonapi.New()
+	consoleApi := core.TonConsoleApi{Client: consoleClient}
+
 	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
 		panic(err)
 	}
-	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg)
+	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg, &consoleApi)
 	if e != nil {
 		panic(e)
 	}
@@ -61,7 +64,7 @@ func main() {
 		panic(e)
 	}
 
-	usdRateCache, err := jettons.InitUsdRateCache(&cfg)
+	usdRateCache, err := jettons.InitUsdRateCache(&cfg, &consoleApi)
 	if err != nil {
 		panic(e)
 	}
@@ -83,7 +86,7 @@ func main() {
 	readyTransactionsChannel := make(chan []*IncomingHash)
 
 	transactionsWaitingList := &core.WaitingList[*IncomingHash]{
-		ExpirationSeconds: 40 * time.Second,
+		ExpirationSeconds: 70 * time.Second,
 	}
 	transactionsTicker := time.NewTicker(10 * time.Second)
 	go func() {
@@ -98,7 +101,7 @@ func main() {
 		}
 	}()
 
-	jettonInfoCacheFunction := func(wallet string) *jettons.ChainTokenInfo {
+	jettonInfoCacheFunction := func(wallet string) *models.ChainTokenInfo {
 		master, e := walletMasterCache.Get(context.Background(), wallet)
 		if e != nil {
 			return nil
@@ -109,7 +112,7 @@ func main() {
 			log.Printf("Unable to get jetton info for %v \n", master.(*models.WalletJetton).Master)
 			return nil
 		}
-		return info.(*jettons.ChainTokenInfo)
+		return info.(*models.ChainTokenInfo)
 	}
 
 	usdRateCacheFunction := func(wallet string) *float64 {
