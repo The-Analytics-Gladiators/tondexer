@@ -35,3 +35,19 @@ func Contains[T comparable](slice []T, value T) bool {
 	}
 	return false
 }
+
+func ChunkArray[T any](array []T, chunkSize int) [][]T {
+	if chunkSize <= 0 {
+		return nil
+	}
+
+	var chunks [][]T
+	for i := 0; i < len(array); i += chunkSize {
+		end := i + chunkSize
+		if end > len(array) {
+			end = len(array)
+		}
+		chunks = append(chunks, array[i:end])
+	}
+	return chunks
+}

@@ -1,13 +1,8 @@
 package jettons
 
 import (
-	"context"
-	"encoding/json"
 	"github.com/stretchr/testify/assert"
-	"github.com/tonkeeper/tonapi-go"
-	"log"
 	"testing"
-	"tondexer/stonfiv2"
 )
 
 func TestJmntToken(t *testing.T) {
@@ -27,20 +22,4 @@ func TestLKYToken(t *testing.T) {
 	assert.Equal(t, uint(9), jetton.Decimals)
 	assert.Equal(t, "wNOT", jetton.Symbol)
 	assert.Equal(t, "Shards of Notcoin NFT bond", jetton.Name)
-}
-
-func TestTrace(t *testing.T) {
-	client, _ := tonapi.New()
-
-	params := tonapi.GetTraceParams{TraceID: "8bcefb3d042c10b4d86b817cc7ad85723c419855ddcac8d43e2e7a2f24cd4bf9"}
-	trace, _ := client.GetTrace(context.Background(), params)
-
-	var response stonfiv2.NotificationJsonBody
-	err := json.Unmarshal(trace.Children[0].Children[0].Children[0].Transaction.InMsg.Value.DecodedBody, &response)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Printf("%v  \n", response)
 }

@@ -16,11 +16,33 @@ import (
 	"tondexer/models"
 )
 
-const StonfiRouterV2 = "EQBCl1JANkTpMpJ9N3lZktPMpp2btRe2vVwHon0la8ibRied"
-
 type IncomingHash struct {
 	Hash string
 	Dex  string
+}
+
+func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, dex string, accounts []string, incomingTransactionsChannel chan *IncomingHash) {
+	for {
+		e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
+			ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
+				log.Printf("%v: new tx with hash: %v lt: %v \n", dex, data.TxHash, data.Lt)
+				go func() {
+					incomingHash := &IncomingHash{
+						Hash: data.TxHash,
+						Dex:  dex,
+					}
+					incomingTransactionsChannel <- incomingHash
+				}()
+			})
+			if err := ws.SubscribeToTransactions(accounts, nil); err != nil {
+				return err
+			}
+			return nil
+		})
+		if e != nil {
+			log.Printf("Streaming failed! for accounts %v: %v \n", accounts, e)
+		}
+	}
 }
 
 func main() {
@@ -47,58 +69,16 @@ func main() {
 	streamingApi := tonapi.NewStreamingAPI(tonapi.WithStreamingToken(cfg.ConsoleToken))
 
 	stonfiV1Accounts := []string{stonfi.StonfiRouter}
-	stonfiV2Accounts := []string{StonfiRouterV2}
+
+	v2RoutersChunks := core.ChunkArray(stonfiv2.Routers, 10)
 
 	client, _ := tonapi.New(tonapi.WithToken(cfg.ConsoleToken))
 	incomingTransactionsChannel := make(chan *IncomingHash)
 
-	go func() {
-		for {
-			e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
-				ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
-					log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
-					go func() {
-						incomingHash := &IncomingHash{
-							Hash: data.TxHash,
-							Dex:  "StonfiV2",
-						}
-						incomingTransactionsChannel <- incomingHash
-					}()
-				})
-				if err := ws.SubscribeToTransactions(stonfiV2Accounts, nil); err != nil {
-					return err
-				}
-				return nil
-			})
-			if e != nil {
-				log.Printf("Streaming failed! %v \n", e)
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
-				ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
-					log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
-					go func() {
-						incomingHash := &IncomingHash{
-							Hash: data.TxHash,
-							Dex:  "StonfiV1",
-						}
-						incomingTransactionsChannel <- incomingHash
-					}()
-				})
-				if err := ws.SubscribeToTransactions(stonfiV1Accounts, nil); err != nil {
-					return err
-				}
-				return nil
-			})
-			if e != nil {
-				log.Printf("Streaming failed! %v \n", e)
-			}
-		}
-	}()
+	go subscribeToAccounts(streamingApi, "StonfiV1", stonfiV1Accounts, incomingTransactionsChannel)
+	for _, chunk := range v2RoutersChunks {
+		go subscribeToAccounts(streamingApi, "StonfiV2", chunk, incomingTransactionsChannel)
+	}
 
 	readyTransactionsChannel := make(chan []*IncomingHash)
 
