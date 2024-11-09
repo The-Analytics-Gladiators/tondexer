@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/ilyakaznacheev/cleanenv"
 	"os"
@@ -65,13 +64,8 @@ func periodArrayRequest[T any](cfg *core.Config, fetchEntitiesFunc func(config *
 		if e != nil {
 			c.JSON(500, gin.H{"msg": e.Error()})
 		}
-		entitiesJson, e := json.Marshal(entities)
-		if e != nil {
-			c.JSON(500, gin.H{"msg": e.Error()})
-			return
-		}
 
-		c.JSON(200, string(entitiesJson))
+		c.JSON(200, entities)
 	}
 }
 
@@ -92,12 +86,7 @@ func latestSwaps(cfg *core.Config) func(c *gin.Context) {
 			return
 		}
 
-		swapsJson, err := json.Marshal(swaps)
-		if err != nil {
-			c.JSON(500, gin.H{"msg": e.Error()})
-			return
-		}
-		c.JSON(200, string(swapsJson))
+		c.JSON(200, swaps)
 	}
 }
 
@@ -119,12 +108,6 @@ func summary(cfg *core.Config) func(c *gin.Context) {
 			c.JSON(500, gin.H{"msg": e.Error()})
 		}
 
-		summaryJson, e := json.Marshal(summary)
-		if e != nil {
-			c.JSON(500, gin.H{"msg": e.Error()})
-			return
-		}
-
-		c.JSON(200, string(summaryJson))
+		c.JSON(200, summary)
 	}
 }
