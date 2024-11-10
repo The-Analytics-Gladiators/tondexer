@@ -10,7 +10,7 @@ type SwapInfo struct {
 	Notification *SwapTransferNotification
 	Payment      *PayoutRequest
 	Referral     *PayoutRequest
-	PoolAddress  string
+	PoolAddress  *address.Address
 }
 
 type SwapTransferNotification struct {

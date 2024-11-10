@@ -194,3 +194,6 @@ func TestPaymentParsingForTonForTokenSwap(t *testing.T) {
 
 	assert.Equal(t, uint64(0), swapInfo.Referral.Amount1Out)
 }
+
+// https://tonviewer.com/transaction/3bc93c9d4696ec75b1e44106f613215e4eaab00894f80bb6cd58ee5aba67b39a both dedust and stonfiv2 and arbitrage
+// https://tonviewer.com/transaction/5ac93cd223409580fcdd4c0899e9a88f3acf831cb1fffbb742ca0ec6103a0cbb - initial transaction has 2 outgoing messages!

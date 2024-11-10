@@ -56,7 +56,7 @@ func swapTracesToSwapInfo(swapTraces *StonfiV2SwapTraces) *models.SwapInfo {
 
 	return &models.SwapInfo{
 		Notification: swapTransferNotification,
-		PoolAddress:  swapTraces.Pool.String(),
+		PoolAddress:  swapTraces.Pool,
 		Payment:      payout,
 		Referral:     referral,
 	}

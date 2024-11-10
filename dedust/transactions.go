@@ -32,6 +32,18 @@ type DedustSwapTraces struct {
 	OptOutVaultWalletTrace OptTrace
 }
 
+func ExtractDedustSwapsFromRootTrace(root *tonapi.Trace) []*models.SwapInfo {
+	infos := core.Map(findSwapTraces(root), func(t *DedustSwapTraces) *models.SwapInfo {
+		info, e := swapInfoFromDedustTraces(t)
+		if e != nil {
+			log.Printf("Error extracting Dedust Swap Info from %v: %v", t.InVaultTrace.Transaction.Hash, e)
+			return nil
+		}
+		return info
+	})
+	return core.Filter(infos, func(info *models.SwapInfo) bool { return info != nil })
+}
+
 func findSwapTraces(root *tonapi.Trace) []*DedustSwapTraces {
 
 	var traverse func(trace *tonapi.Trace, previousTrace *tonapi.Trace)
@@ -128,13 +140,14 @@ func swapInfoFromDedustTraces(swapTraces *DedustSwapTraces) (*models.SwapInfo, e
 		copyPayment := *payment
 		copyPayment.Amount1Out = 0
 		referral = &copyPayment
+		referral.Owner = swapTransferNotification.ReferralAddress
 	}
 
 	return &models.SwapInfo{
 		Notification: swapTransferNotification,
 		Payment:      payment,
 		Referral:     referral,
-		PoolAddress:  swapTraces.PoolTrace.Transaction.Account.Address,
+		PoolAddress:  address.MustParseRawAddr(swapTraces.PoolTrace.Transaction.Account.Address),
 	}, nil
 }
 

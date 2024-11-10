@@ -96,7 +96,7 @@ func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Tr
 	}
 
 	if relatedEvents.Pool != nil {
-		result.PoolAddress = relatedEvents.Pool.String()
+		result.PoolAddress = relatedEvents.Pool
 	}
 	return result
 }
