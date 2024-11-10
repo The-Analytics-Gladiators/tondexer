@@ -47,17 +47,17 @@ func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PayoutRequest, error)
 	token1Address := ref.MustLoadAddr()
 
 	return &models.PayoutRequest{
-		Hash:            trace.Transaction.Hash,
-		Lt:              message.CreatedLT,
-		TransactionTime: time.UnixMilli(trace.Transaction.Utime * 1000),
-		EventCatchTime:  time.Now(),
-		QueryId:         queryId,
-		Owner:           owner,
-		ExitCode:        exitCode,
-		Amount0Out:      amount0Out,
-		Token0Address:   token0Address,
-		Amount1Out:      amount1Out,
-		Token1Address:   token1Address,
+		Hash:                trace.Transaction.Hash,
+		Lt:                  message.CreatedLT,
+		TransactionTime:     time.UnixMilli(trace.Transaction.Utime * 1000),
+		EventCatchTime:      time.Now(),
+		QueryId:             queryId,
+		Owner:               owner,
+		ExitCode:            exitCode,
+		Amount0Out:          amount0Out,
+		Token0WalletAddress: token0Address,
+		Amount1Out:          amount1Out,
+		Token1WalletAddress: token1Address,
 	}, nil
 }
 
@@ -84,17 +84,17 @@ func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWith
 	token1Address := ref.MustLoadAddr()
 
 	return &models.PayoutRequest{
-		Hash:            rawTransactionWithHash.Hash,
-		Lt:              rawTransactionWithHash.Lt,
-		TransactionTime: rawTransactionWithHash.TransactionTime,
-		EventCatchTime:  rawTransactionWithHash.CatchEventTime,
-		QueryId:         queryId,
-		Owner:           owner,
-		ExitCode:        exitCode,
-		Amount0Out:      amount0Out,
-		Token0Address:   token0Address,
-		Amount1Out:      amount1Out,
-		Token1Address:   token1Address,
+		Hash:                rawTransactionWithHash.Hash,
+		Lt:                  rawTransactionWithHash.Lt,
+		TransactionTime:     rawTransactionWithHash.TransactionTime,
+		EventCatchTime:      rawTransactionWithHash.CatchEventTime,
+		QueryId:             queryId,
+		Owner:               owner,
+		ExitCode:            exitCode,
+		Amount0Out:          amount0Out,
+		Token0WalletAddress: token0Address,
+		Amount1Out:          amount1Out,
+		Token1WalletAddress: token1Address,
 	}
 }
 

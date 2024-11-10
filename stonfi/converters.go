@@ -28,14 +28,14 @@ func ToChSwap(swap *models.SwapInfo,
 	var walletOut string
 	var amountOut uint64
 	if swapPayment.Amount0Out == 0 {
-		walletIn = swapPayment.Token0Address.String()
+		walletIn = swapPayment.Token0WalletAddress.String()
 		amountIn = swap.Notification.Amount
-		walletOut = swapPayment.Token1Address.String()
+		walletOut = swapPayment.Token1WalletAddress.String()
 		amountOut = swapPayment.Amount1Out
 	} else {
-		walletIn = swapPayment.Token1Address.String()
+		walletIn = swapPayment.Token1WalletAddress.String()
 		amountIn = swap.Notification.Amount
-		walletOut = swapPayment.Token0Address.String()
+		walletOut = swapPayment.Token0WalletAddress.String()
 		amountOut = swapPayment.Amount0Out
 	}
 

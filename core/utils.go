@@ -1,12 +1,6 @@
 package core
 
-func IntRef(value int) *int {
-	return &value
-}
-
-func Int64Ref(value int64) *int64 {
-	return &value
-}
+const JettonNotifyOpCode = "0x7362d09c"
 
 func Map[T, V any](arr []T, f func(T) V) []V {
 	result := make([]V, len(arr))

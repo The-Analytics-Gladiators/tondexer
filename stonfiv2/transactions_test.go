@@ -104,9 +104,9 @@ func Test_ExtractStonfiV2SwapsFromRootTrace(t *testing.T) {
 	assert.Equal(t, address.MustParseRawAddr("0:2fe5505095f1bd92f308baaf996287ef248bee540269e13cc816164152fdf7e8"), swapInfo.Payment.Owner)
 	assert.Equal(t, uint64(3326308581), swapInfo.Payment.ExitCode)
 	assert.Equal(t, uint64(0), swapInfo.Payment.Amount0Out)
-	assert.Equal(t, address.MustParseRawAddr("0:40a0fe4e243dc71295bb6ea73491a3a020594c814ce2937219fd1a6fb308a4b5"), swapInfo.Payment.Token0Address)
+	assert.Equal(t, address.MustParseRawAddr("0:40a0fe4e243dc71295bb6ea73491a3a020594c814ce2937219fd1a6fb308a4b5"), swapInfo.Payment.Token0WalletAddress)
 	assert.Equal(t, uint64(310885183), swapInfo.Payment.Amount1Out)
-	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Payment.Token1Address)
+	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Payment.Token1WalletAddress)
 
 	assert.Equal(t, "8bcefb3d042c10b4d86b817cc7ad85723c419855ddcac8d43e2e7a2f24cd4bf9", swapInfo.Referral.Hash)
 	assert.Equal(t, uint64(50536543000007), swapInfo.Referral.Lt)
@@ -114,9 +114,9 @@ func Test_ExtractStonfiV2SwapsFromRootTrace(t *testing.T) {
 	assert.Equal(t, address.MustParseRawAddr("0:b089166b7d44a530cd1dcfe1e6e0a5b522a685cf53f0c60dfeb748d00eddfaa8"), swapInfo.Referral.Owner)
 	assert.Equal(t, uint64(0), swapInfo.Referral.ExitCode)
 	assert.Equal(t, uint64(0), swapInfo.Referral.Amount0Out)
-	assert.Equal(t, address.MustParseRawAddr("0:40a0fe4e243dc71295bb6ea73491a3a020594c814ce2937219fd1a6fb308a4b5"), swapInfo.Referral.Token0Address)
+	assert.Equal(t, address.MustParseRawAddr("0:40a0fe4e243dc71295bb6ea73491a3a020594c814ce2937219fd1a6fb308a4b5"), swapInfo.Referral.Token0WalletAddress)
 	assert.Equal(t, uint64(311509), swapInfo.Referral.Amount1Out)
-	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Referral.Token1Address)
+	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Referral.Token1WalletAddress)
 }
 
 func Test_DoNotParseFailedTransaction(t *testing.T) {

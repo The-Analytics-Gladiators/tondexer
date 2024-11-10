@@ -54,7 +54,7 @@ func TestParsePaymentRequestMessage(t *testing.T) {
 	assert.Equal(t, message.Owner, address.MustParseRawAddr("0:c5f5ca55b18af2a46f9a479ae81504b5fc0ba2b43062a6f5311d4783a5e447ed"))
 	assert.Equal(t, message.ExitCode, uint64(3326308581))
 	assert.Equal(t, message.Amount0Out, uint64(0))
-	assert.Equal(t, message.Token0Address, address.MustParseRawAddr("0:f38723ef1e85f751e34de3ab108ff6e2e3837b9f2ad156560ad709ce7392d5c8"))
+	assert.Equal(t, message.Token0WalletAddress, address.MustParseRawAddr("0:f38723ef1e85f751e34de3ab108ff6e2e3837b9f2ad156560ad709ce7392d5c8"))
 	assert.Equal(t, message.Amount1Out, uint64(30999999999))
-	assert.Equal(t, message.Token1Address, address.MustParseRawAddr("0:1150b518b2626ad51899f98887f8824b70065456455f7fe2813f012699a4061f"))
+	assert.Equal(t, message.Token1WalletAddress, address.MustParseRawAddr("0:1150b518b2626ad51899f98887f8824b70065456455f7fe2813f012699a4061f"))
 }
