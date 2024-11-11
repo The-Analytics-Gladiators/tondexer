@@ -128,7 +128,7 @@ func main() {
 	}
 	swapChChannel := make(chan []*models.SwapCH)
 
-	processedTransactions := core.NewEvictableSet[string](3 * time.Minute)
+	processedTransactions := core.NewEvictableSet[string](10 * time.Minute)
 	go func() {
 		for transactionHashes := range readyTransactionsChannel {
 			var modelsCh []*models.SwapCH
