@@ -49,6 +49,22 @@ func swapInfoWithDex(infos []*models.SwapInfo, dex string) []core.Pair[*models.S
 	})
 }
 
+func hasIntersection(slice1, slice2 []string) bool {
+	elements := make(map[string]bool)
+
+	for _, item := range slice1 {
+		elements[item] = true
+	}
+
+	for _, item := range slice2 {
+		if elements[item] {
+			return true
+		}
+	}
+
+	return false
+}
+
 func main() {
 	var cfg core.Config
 
@@ -128,12 +144,14 @@ func main() {
 	}
 	swapChChannel := make(chan []*models.SwapCH)
 
-	processedTransactions := core.NewEvictableSet[string](10 * time.Minute)
+	alreadySeenHashes := core.NewEvictableSet[string](3 * time.Minute)
+
+	savedToChTransactionsHashes := core.NewEvictableSet[string](15 * time.Minute)
 	go func() {
 		for transactionHashes := range readyTransactionsChannel {
 			var modelsCh []*models.SwapCH
 			for _, transactionHash := range transactionHashes {
-				if processedTransactions.Exists(transactionHash) {
+				if alreadySeenHashes.Exists(transactionHash) {
 					continue
 				}
 				trace, e := consoleApi.GetTraceByHash(transactionHash)
@@ -142,7 +160,7 @@ func main() {
 					continue
 				}
 				for _, transaction := range stonfi.GetAllTransactionsFromTrace(trace) {
-					processedTransactions.Add(transaction.Hash)
+					alreadySeenHashes.Add(transaction.Hash)
 				}
 
 				stonfiV1Swaps := swapInfoWithDex(stonfi.ExtractStonfiSwapsFromRootTrace(trace), "StonfiV1")
@@ -156,12 +174,30 @@ func main() {
 				})...)
 
 			}
+			notNullModels := core.Filter(modelsCh, func(ch *models.SwapCH) bool {
+				return ch != nil
+			})
+			newModels := core.Filter(notNullModels, func(ch *models.SwapCH) bool {
+				contains := false
+				for _, hash := range ch.Hashes {
+					if savedToChTransactionsHashes.Exists(hash) {
+						contains = true
+					}
+				}
+				return !contains
+			})
+			for _, swap := range newModels {
+				for _, hash := range swap.Hashes {
+					savedToChTransactionsHashes.Add(hash)
+				}
+			}
+
 			go func() {
-				swapChChannel <- core.Filter(modelsCh, func(ch *models.SwapCH) bool {
-					return ch != nil
-				})
+				swapChChannel <- newModels
 			}()
-			processedTransactions.Evict()
+
+			alreadySeenHashes.Evict()
+			savedToChTransactionsHashes.Evict()
 		}
 	}()
 
