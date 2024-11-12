@@ -29,17 +29,21 @@ func parseTraceNotification(notification *tonapi.Trace) (*models.SwapTransferNot
 	if notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.RefAddress != "" {
 		referralAddress = address.MustParseRawAddr(notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.RefAddress)
 	}
+	toAddress, e := address.ParseRawAddr(notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.Receiver)
+	if e != nil {
+		log.Printf("error parsing toAddress for notification %v: %v\n", notification.Transaction.Hash, e)
+	}
 	return &models.SwapTransferNotification{
 		Hash:            notification.Transaction.Hash,
 		Lt:              uint64(notification.Transaction.Lt),
 		TransactionTime: time.UnixMilli(notification.Transaction.Utime * 1000),
 		EventCatchTime:  time.Now(),
-		QueryId:         uint64(notificationInfo.QueryID),
+		QueryId:         notificationInfo.QueryID,
 		Amount:          amount,
 		Sender:          address.MustParseRawAddr(notificationInfo.Sender),
 		TokenWallet:     address.MustParseRawAddr(notificationInfo.ForwardPayload.Value.Value.TokenWallet1),
 		MinOut:          minAmount,
-		ToAddress:       address.MustParseRawAddr(notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.Receiver),
+		ToAddress:       toAddress,
 		ReferralAddress: referralAddress,
 	}, nil
 }
