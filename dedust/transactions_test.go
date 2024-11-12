@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
+	"math/big"
 	"testing"
 )
 
@@ -85,10 +86,10 @@ func TestNotificationParsingFromTonToTokenSwap(t *testing.T) {
 	//assert.Equal(t, , , notificationFromSwapTraces.TransactionTime)
 	//assert.Equal(t, , notificationFromSwapTraces.)
 	assert.Equal(t, uint64(275062886401), notification.QueryId)
-	assert.Equal(t, uint64(20000000000), notification.Amount)
+	assert.Equal(t, big.NewInt(20000000000), notification.Amount)
 	assert.Equal(t, address.MustParseRawAddr("0:f7acabf8c0049e3d0030112934d9f383f15e653d567d2a35676c2128e7569f92"), notification.Sender)
 	assert.Nil(t, notification.TokenWallet)
-	assert.Equal(t, uint64(1082051124), notification.MinOut)
+	assert.Equal(t, big.NewInt(1082051124), notification.MinOut)
 	assert.Nil(t, notification.ToAddress)
 	assert.Equal(t, address.MustParseRawAddr("0:a8d9fb483fafc657d0f504f11cb499ab4a9c961348bb0eebfd5542ab52029bfb"), notification.ReferralAddress)
 }
@@ -109,10 +110,10 @@ func TestNotificationParsingToTokenFromTonSwap(t *testing.T) {
 	//assert.Equal(t, , , notificationFromSwapTraces.TransactionTime)
 	//assert.Equal(t, , notificationFromSwapTraces.)
 	assert.Equal(t, uint64(275063046657), notification.QueryId)
-	assert.Equal(t, uint64(4717904120), notification.Amount)
+	assert.Equal(t, big.NewInt(4717904120), notification.Amount)
 	assert.Equal(t, address.MustParseRawAddr("0:575b0dcf52a712a0899aa151d143799f9fbe36e54a7289d1371db23a5a0897e7"), notification.Sender)
 	assert.Nil(t, notification.TokenWallet)
-	assert.Equal(t, uint64(23426146), notification.MinOut)
+	assert.Equal(t, big.NewInt(23426146), notification.MinOut)
 	assert.Nil(t, notification.ToAddress)
 	assert.Equal(t, address.MustParseRawAddr("0:06fe05fea040552ce0090cfa9a93a53fecf7639b71f8eb4abedbe8398c9a98b7"), notification.ReferralAddress)
 }
@@ -135,12 +136,12 @@ func TestPaymentParsingForTokenForTokenSwap(t *testing.T) {
 	assert.Equal(t, uint64(275063046657), payment.QueryId)
 	assert.Nil(t, payment.Owner)
 	assert.Equal(t, uint64(0), payment.ExitCode)
-	assert.Equal(t, uint64(0), payment.Amount0Out)
+	assert.Equal(t, big.NewInt(0), payment.Amount0Out)
 	assert.Equal(t, address.MustParseAddr("EQCSdAZtek06kK-FGDkPl1HMnGTaIQhN7be_FPtToOrkPV0o"), payment.Token0WalletAddress)
-	assert.Equal(t, uint64(24150666), payment.Amount1Out)
+	assert.Equal(t, big.NewInt(24150666), payment.Amount1Out)
 	assert.Equal(t, address.MustParseAddr("EQCI2sZ8zq25yub6rHEY8FwPqV3zbCqS5oasOdljENCjh0bs"), payment.Token1WalletAddress)
 
-	assert.Equal(t, uint64(0), swapInfo.Referral.Amount1Out)
+	assert.Equal(t, big.NewInt(0), swapInfo.Referral.Amount1Out)
 }
 
 func TestPaymentParsingForTokenForTonSwap(t *testing.T) {
@@ -161,9 +162,9 @@ func TestPaymentParsingForTokenForTonSwap(t *testing.T) {
 	//assert.Equal(t, uint64(12344582930068503000), payment.QueryId) // tonviewer shows another id O_o
 	assert.Nil(t, payment.Owner)
 	assert.Equal(t, uint64(0), payment.ExitCode)
-	assert.Equal(t, uint64(0), payment.Amount0Out)
+	assert.Equal(t, big.NewInt(0), payment.Amount0Out)
 	assert.Equal(t, address.MustParseAddr("EQC4Nm5aWcLYHWqH87fm0Wk5vqcJ5Am_TKcr-Q9jChQu1m7j"), payment.Token0WalletAddress)
-	assert.Equal(t, uint64(2616434113), payment.Amount1Out)
+	assert.Equal(t, big.NewInt(2616434113), payment.Amount1Out)
 	assert.Equal(t, address.MustParseAddr("EQARULUYsmJq1RiZ-YiH-IJLcAZUVkVff-KBPwEmmaQGH6aC"), payment.Token1WalletAddress)
 
 	assert.Nil(t, swapInfo.Referral)
@@ -187,12 +188,23 @@ func TestPaymentParsingForTonForTokenSwap(t *testing.T) {
 	assert.Equal(t, uint64(275062886401), payment.QueryId) // tonviewer shows another id O_o
 	assert.Nil(t, payment.Owner)
 	assert.Equal(t, uint64(0), payment.ExitCode)
-	assert.Equal(t, uint64(0), payment.Amount0Out)
+	assert.Equal(t, big.NewInt(0), payment.Amount0Out)
 	assert.Equal(t, address.MustParseAddr("EQARULUYsmJq1RiZ-YiH-IJLcAZUVkVff-KBPwEmmaQGH6aC"), payment.Token0WalletAddress)
-	assert.Equal(t, uint64(1139001183), payment.Amount1Out)
+	assert.Equal(t, big.NewInt(1139001183), payment.Amount1Out)
 	assert.Equal(t, address.MustParseAddr("EQC4Nm5aWcLYHWqH87fm0Wk5vqcJ5Am_TKcr-Q9jChQu1m7j"), payment.Token1WalletAddress)
 
-	assert.Equal(t, uint64(0), swapInfo.Referral.Amount1Out)
+	assert.Equal(t, big.NewInt(0), swapInfo.Referral.Amount1Out)
+}
+
+func TestParseBigLimitAndAmount(t *testing.T) {
+	client, _ := tonapi.New()
+	params := tonapi.GetTraceParams{TraceID: "0b4bf597f1a07d0a97ab8cc7c1e961c2013ba974c4708487eab2afc7ba3e0b76"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapTraces := findSwapTraces(trace)
+
+	swapInfo, _ := swapInfoFromDedustTraces(swapTraces[0])
+	println(swapInfo)
 }
 
 // https://tonviewer.com/transaction/3bc93c9d4696ec75b1e44106f613215e4eaab00894f80bb6cd58ee5aba67b39a both dedust and stonfiv2 and arbitrage

@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"github.com/xssnick/tonutils-go/address"
+	"math/big"
 	"time"
 )
 
@@ -19,10 +20,10 @@ type SwapTransferNotification struct {
 	TransactionTime time.Time
 	EventCatchTime  time.Time
 	QueryId         uint64
-	Amount          uint64
+	Amount          *big.Int
 	Sender          *address.Address // from_user in contract
 	TokenWallet     *address.Address // Router Outer Jetton wallet. In fact isn't used
-	MinOut          uint64
+	MinOut          *big.Int
 	ToAddress       *address.Address // also in fact unused
 	ReferralAddress *address.Address
 }
@@ -42,9 +43,9 @@ type PayoutRequest struct {
 	QueryId             uint64
 	Owner               *address.Address
 	ExitCode            uint64
-	Amount0Out          uint64
+	Amount0Out          *big.Int
 	Token0WalletAddress *address.Address
-	Amount1Out          uint64
+	Amount1Out          *big.Int
 	Token1WalletAddress *address.Address
 }
 

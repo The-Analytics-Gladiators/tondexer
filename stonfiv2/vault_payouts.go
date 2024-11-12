@@ -5,7 +5,7 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"log"
-	"strconv"
+	"math/big"
 	"time"
 	"tondexer/models"
 )
@@ -29,13 +29,13 @@ func parseTraceVaultPayout(vaultPayout *tonapi.Trace) (*models.PayoutRequest, er
 	if err := json.Unmarshal(vaultPayout.Transaction.InMsg.Value.DecodedBody, &payoutJson); err != nil {
 		return nil, err
 	}
-	amount0Out, e := strconv.ParseUint(payoutJson.AdditionalInfo.Amount0Out, 10, 64)
-	if e != nil {
-		log.Printf("error parsing amount0Out for payout %v: %v\n", vaultPayout.Transaction.Hash, e)
+	amount0Out, success := new(big.Int).SetString(payoutJson.AdditionalInfo.Amount0Out, 10)
+	if !success {
+		log.Printf("error parsing amount0Out '%v' for payout %v\n", payoutJson.AdditionalInfo.Amount0Out, vaultPayout.Transaction.Hash)
 	}
-	amount1Out, e := strconv.ParseUint(payoutJson.AdditionalInfo.Amount1Out, 10, 64)
-	if e != nil {
-		log.Printf("error parsing amount1Out for payout %v: %v\n", vaultPayout.Transaction.Hash, e)
+	amount1Out, success := new(big.Int).SetString(payoutJson.AdditionalInfo.Amount1Out, 10)
+	if !success {
+		log.Printf("error parsing amount1Out '%v' for payout %v\n", payoutJson.AdditionalInfo.Amount1Out, vaultPayout.Transaction.Hash)
 	}
 
 	return &models.PayoutRequest{
@@ -43,7 +43,7 @@ func parseTraceVaultPayout(vaultPayout *tonapi.Trace) (*models.PayoutRequest, er
 		Lt:                  uint64(vaultPayout.Transaction.Lt),
 		TransactionTime:     time.UnixMilli(vaultPayout.Transaction.Utime * 1000),
 		EventCatchTime:      time.Now(),
-		QueryId:             uint64(payoutJson.QueryID),
+		QueryId:             payoutJson.QueryID,
 		Owner:               address.MustParseRawAddr(payoutJson.Owner),
 		ExitCode:            0,
 		Amount0Out:          amount0Out,

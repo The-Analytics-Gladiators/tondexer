@@ -170,7 +170,7 @@ func main() {
 				swaps := append(stonfiV1Swaps, append(stonfiV2Swaps, dedustSwaps...)...)
 
 				modelsCh = append(modelsCh, core.Map(swaps, func(pair core.Pair[*models.SwapInfo, string]) *models.SwapCH {
-					return stonfi.ToChSwap(pair.First, pair.Second, jettonInfoCacheFunction, usdRateCacheFunction)
+					return models.ToChSwap(pair.First, pair.Second, jettonInfoCacheFunction, usdRateCacheFunction)
 				})...)
 
 			}

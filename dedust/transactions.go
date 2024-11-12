@@ -5,7 +5,7 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"log"
-	"strconv"
+	"math/big"
 	"time"
 	"tondexer/core"
 	"tondexer/models"
@@ -138,7 +138,7 @@ func swapInfoFromDedustTraces(swapTraces *DedustSwapTraces) (*models.SwapInfo, e
 	var referral *models.PayoutRequest
 	if swapTransferNotification.ReferralAddress != nil {
 		copyPayment := *payment
-		copyPayment.Amount1Out = 0
+		copyPayment.Amount1Out = big.NewInt(0)
 		referral = &copyPayment
 		referral.Owner = swapTransferNotification.ReferralAddress
 	}
@@ -154,8 +154,8 @@ func swapInfoFromDedustTraces(swapTraces *DedustSwapTraces) (*models.SwapInfo, e
 func notificationFromSwapTraces(swapTraces *DedustSwapTraces, poolJson PoolJsonBody) (*models.SwapTransferNotification, error) {
 
 	var queryId uint64
-	var amount uint64
-	var minOut uint64
+	var amount *big.Int
+	var minOut *big.Int
 	var referralAddress *address.Address
 
 	if !swapTraces.OptInVaultWalletTrace.Set {
@@ -166,15 +166,17 @@ func notificationFromSwapTraces(swapTraces *DedustSwapTraces, poolJson PoolJsonB
 		}
 		queryId = inVaultJson.QueryID
 
-		var err error
-		amount, err = strconv.ParseUint(inVaultJson.Amount, 10, 64)
-		if err != nil {
-			log.Printf("error parsing amount for inVault %v: %v\n", swapTraces.InVaultTrace.Transaction.Hash, err)
+		var success bool
+		amount, success = new(big.Int).SetString(inVaultJson.Amount, 10)
+		if !success {
+			log.Printf("error parsing amount '%v' for inVault %v\n", inVaultJson.Amount, swapTraces.InVaultTrace.Transaction.Hash)
+			amount = big.NewInt(0)
 		}
-		minOut, err = strconv.ParseUint(inVaultJson.Step.Params.Limit, 10, 64)
-		if err != nil {
-			log.Printf("error parsing limit for inVault %v: %v\n", swapTraces.InVaultTrace.Transaction.Hash, err)
+		minOut, success = new(big.Int).SetString(inVaultJson.Step.Params.Limit, 10)
+		if !success {
+			log.Printf("error parsing limit '%v' for inVault %v\n", inVaultJson.Step.Params.Limit, swapTraces.InVaultTrace.Transaction.Hash)
 		}
+
 		if inVaultJson.SwapParams.ReferralAddr != "" {
 			referralAddress = address.MustParseRawAddr(inVaultJson.SwapParams.ReferralAddr)
 		}
@@ -186,15 +188,16 @@ func notificationFromSwapTraces(swapTraces *DedustSwapTraces, poolJson PoolJsonB
 		}
 		queryId = inVaultJson.QueryID
 
-		var err error
-		amount, err = strconv.ParseUint(inVaultJson.Amount, 10, 64)
-		if err != nil {
-			log.Printf("error parsing amount for inVault %v: %v\n", swapTraces.InVaultTrace.Transaction.Hash, err)
+		var success bool
+		amount, success = new(big.Int).SetString(inVaultJson.Amount, 10)
+		if !success {
+			log.Printf("error parsing amount '%v' for inVault %v\n", inVaultJson.Amount, swapTraces.InVaultTrace.Transaction.Hash)
+			amount = big.NewInt(0)
 		}
 
-		minOut, err = strconv.ParseUint(inVaultJson.ForwardPayload.Value.Value.Step.Params.Limit, 10, 64)
-		if err != nil {
-			log.Printf("error parsing limit for inVault %v: %v\n", swapTraces.InVaultTrace.Transaction.Hash, err)
+		minOut, success = new(big.Int).SetString(inVaultJson.ForwardPayload.Value.Value.Step.Params.Limit, 10)
+		if !success {
+			log.Printf("error parsing limit '%v' for inVault %v\n", inVaultJson.ForwardPayload.Value.Value.Step.Params.Limit, swapTraces.InVaultTrace.Transaction.Hash)
 		}
 
 		if inVaultJson.ForwardPayload.Value.Value.SwapParams.ReferralAddr != "" {
@@ -242,10 +245,11 @@ func paymentFromSwapTraces(swapTraces *DedustSwapTraces) (*models.PayoutRequest,
 		tokenOutWalletAddress = stonfiPtonWallet
 	}
 
-	amountOut, err := strconv.ParseUint(outVaultJson.Amount, 10, 64)
-	if err != nil {
-		log.Printf("Unable to parse amount '%v' from outVault for Hash %v: %v \n",
-			outVaultJson.Amount, swapTraces.OutVaultTrace.Transaction.Hash, err)
+	amountOut, success := new(big.Int).SetString(outVaultJson.Amount, 10) //strconv.ParseUint(outVaultJson.Amount, 10, 64)
+	if !success {
+		log.Printf("Unable to parse amount '%v' from outVault for Hash %v",
+			outVaultJson.Amount, swapTraces.OutVaultTrace.Transaction.Hash)
+		amountOut = big.NewInt(0)
 	}
 
 	return &models.PayoutRequest{
@@ -254,9 +258,9 @@ func paymentFromSwapTraces(swapTraces *DedustSwapTraces) (*models.PayoutRequest,
 		TransactionTime:     time.UnixMilli(swapTraces.OutVaultTrace.Transaction.Utime * 1000),
 		EventCatchTime:      time.Now(),
 		QueryId:             outVaultJson.QueryID,
-		Owner:               nil, // Used only for referrals
-		ExitCode:            0,   // No exit code
-		Amount0Out:          0,   // Here we treat token0 as alsways IN token
+		Owner:               nil,           // Used only for referrals
+		ExitCode:            0,             // No exit code
+		Amount0Out:          big.NewInt(0), // Here we treat token0 as always IN token
 		Token0WalletAddress: tokenInWalletAddress,
 		Amount1Out:          amountOut,
 		Token1WalletAddress: tokenOutWalletAddress,

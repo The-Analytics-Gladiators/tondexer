@@ -1,14 +1,14 @@
-package stonfi
+package models
 
 import (
 	"log"
-	"tondexer/models"
+	"math/big"
 )
 
-func ToChSwap(swap *models.SwapInfo,
+func ToChSwap(swap *SwapInfo,
 	dex string,
-	cache func(string) *models.ChainTokenInfo,
-	rateCache func(string) *float64) *models.SwapCH {
+	cache func(string) *ChainTokenInfo,
+	rateCache func(string) *float64) *SwapCH {
 
 	if swap.Notification == nil {
 		return nil
@@ -24,10 +24,10 @@ func ToChSwap(swap *models.SwapInfo,
 	hashes := []string{swap.Notification.Hash, swapPayment.Hash}
 
 	var walletIn string
-	var amountIn uint64
+	var amountIn *big.Int
 	var walletOut string
-	var amountOut uint64
-	if swapPayment.Amount0Out == 0 {
+	var amountOut *big.Int
+	if swapPayment.Amount0Out.Cmp(big.NewInt(0)) == 0 {
 		walletIn = swapPayment.Token0WalletAddress.String()
 		amountIn = swap.Notification.Amount
 		walletOut = swapPayment.Token1WalletAddress.String()
@@ -40,13 +40,13 @@ func ToChSwap(swap *models.SwapInfo,
 	}
 
 	var referralAddress string
-	var referralAmount uint64
+	var referralAmount *big.Int
 
 	if swap.Referral != nil {
 		referralSwap := swap.Referral
 
 		referralAddress = referralSwap.Owner.String()
-		if referralSwap.Amount0Out == 0 {
+		if referralSwap.Amount0Out.Cmp(big.NewInt(0)) == 0 {
 			referralAmount = referralSwap.Amount1Out
 		} else {
 			referralAmount = referralSwap.Amount0Out
@@ -93,7 +93,7 @@ func ToChSwap(swap *models.SwapInfo,
 		tokenOutDecimals = tokenOutInfo.Decimals
 	}
 
-	return &models.SwapCH{
+	return &SwapCH{
 		Dex:               dex,
 		Hashes:            hashes,
 		Lt:                swap.Notification.Lt,

@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
+	"math/big"
 	"slices"
 	"testing"
 )
@@ -23,10 +24,10 @@ func TestSwapTransferNotificationWithReferral(t *testing.T) {
 	assert.Equal(t, message.Lt, uint64(49884086000002))
 	//assert.Equal(t, message.TransactionTime, tm)
 	assert.Equal(t, message.QueryId, uint64(1728730147170))
-	assert.Equal(t, message.Amount, uint64(11539116566))
+	assert.Equal(t, message.Amount, big.NewInt(11539116566))
 	assert.Equal(t, message.Sender, address.MustParseRawAddr("0:a3fd8c4d3a5bf76f43f8bab26df4a64cc98ea8aedb44c275d0ed3cea09486947"))
 	assert.Equal(t, message.TokenWallet, address.MustParseRawAddr("0:1150b518b2626ad51899f98887f8824b70065456455f7fe2813f012699a4061f"))
-	assert.Equal(t, message.MinOut, uint64(2830035335))
+	assert.Equal(t, message.MinOut, big.NewInt(2830035335))
 	assert.Equal(t, message.ToAddress, address.MustParseRawAddr("0:a3fd8c4d3a5bf76f43f8bab26df4a64cc98ea8aedb44c275d0ed3cea09486947"))
 	assert.Equal(t, message.ReferralAddress, address.MustParseRawAddr("0:bdf6cf18679ba1a0b5ff09cd6670c99da146ddc4785a27b35b5dc04593e34734"))
 }
@@ -53,8 +54,8 @@ func TestParsePaymentRequestMessage(t *testing.T) {
 	assert.Equal(t, message.QueryId, uint64(165066398389))
 	assert.Equal(t, message.Owner, address.MustParseRawAddr("0:c5f5ca55b18af2a46f9a479ae81504b5fc0ba2b43062a6f5311d4783a5e447ed"))
 	assert.Equal(t, message.ExitCode, uint64(3326308581))
-	assert.Equal(t, message.Amount0Out, uint64(0))
+	assert.Equal(t, message.Amount0Out, big.NewInt(0))
 	assert.Equal(t, message.Token0WalletAddress, address.MustParseRawAddr("0:f38723ef1e85f751e34de3ab108ff6e2e3837b9f2ad156560ad709ce7392d5c8"))
-	assert.Equal(t, message.Amount1Out, uint64(30999999999))
+	assert.Equal(t, message.Amount1Out, big.NewInt(30999999999))
 	assert.Equal(t, message.Token1WalletAddress, address.MustParseRawAddr("0:1150b518b2626ad51899f98887f8824b70065456455f7fe2813f012699a4061f"))
 }

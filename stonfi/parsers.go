@@ -7,6 +7,7 @@ import (
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
+	"math/big"
 	"time"
 	"tondexer/models"
 )
@@ -54,48 +55,11 @@ func PaymentRequestFromTrace(trace *tonapi.Trace) (*models.PayoutRequest, error)
 		QueryId:             queryId,
 		Owner:               owner,
 		ExitCode:            exitCode,
-		Amount0Out:          amount0Out,
+		Amount0Out:          new(big.Int).SetUint64(amount0Out),
 		Token0WalletAddress: token0Address,
-		Amount1Out:          amount1Out,
+		Amount1Out:          new(big.Int).SetUint64(amount1Out),
 		Token1WalletAddress: token1Address,
 	}, nil
-}
-
-func ParsePaymentRequestMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.PayoutRequest {
-	cll := message.Body.BeginParse()
-
-	msgCode := cll.MustLoadUInt(32) // Message code
-	if msgCode != PaymentRequestCode {
-		return nil
-	}
-
-	queryId := cll.MustLoadUInt(64)
-	owner := cll.MustLoadAddr()
-	exitCode := cll.MustLoadUInt(32)
-	//cll.MustLoadUInt(32)
-	if exitCode != SwapOkPaymentCode && exitCode != SwapRefPaymentCode {
-		return nil
-	}
-
-	ref := cll.MustLoadRef()
-	amount0Out := ref.MustLoadCoins()
-	token0Address := ref.MustLoadAddr()
-	amount1Out := ref.MustLoadCoins()
-	token1Address := ref.MustLoadAddr()
-
-	return &models.PayoutRequest{
-		Hash:                rawTransactionWithHash.Hash,
-		Lt:                  rawTransactionWithHash.Lt,
-		TransactionTime:     rawTransactionWithHash.TransactionTime,
-		EventCatchTime:      rawTransactionWithHash.CatchEventTime,
-		QueryId:             queryId,
-		Owner:               owner,
-		ExitCode:            exitCode,
-		Amount0Out:          amount0Out,
-		Token0WalletAddress: token0Address,
-		Amount1Out:          amount1Out,
-		Token1WalletAddress: token1Address,
-	}
 }
 
 func ParseRawTransaction(transactions string) (*tlb.Transaction, error) {
@@ -149,55 +113,11 @@ func V1NotificationFromTrace(trace *tonapi.Trace) (*models.SwapTransferNotificat
 		TransactionTime: time.UnixMilli(trace.Transaction.Utime * 1000),
 		EventCatchTime:  time.Now(),
 		QueryId:         queryId,
-		Amount:          jettonAmount,
+		Amount:          new(big.Int).SetUint64(jettonAmount),
 		Sender:          fromUser,
 		TokenWallet:     tokenWallet1,
-		MinOut:          minOut,
+		MinOut:          new(big.Int).SetUint64(minOut),
 		ToAddress:       toAddress,
 		ReferralAddress: refAddress,
 	}, nil
-}
-
-func ParseSwapTransferNotificationMessage(message *tlb.InternalMessage, rawTransactionWithHash *models.RawTransactionWithHash) *models.SwapTransferNotification {
-	cll := message.Body.BeginParse()
-
-	msgCode := cll.MustLoadUInt(32) // Message code
-	if msgCode != TransferNotificationCode {
-		return nil
-	}
-
-	queryId := cll.MustLoadUInt(64)
-	jettonAmount := cll.MustLoadCoins()
-	fromUser := cll.MustLoadAddr()
-
-	ref := cll.MustLoadRef()
-	transferredOp := ref.MustLoadUInt(32)
-	tokenWallet1 := ref.MustLoadAddr()
-
-	if transferredOp != SwapOpCode {
-		return nil
-	}
-
-	minOut := ref.MustLoadCoins()
-	toAddress := ref.MustLoadAddr()
-	hasRef := ref.MustLoadBoolBit()
-
-	var refAddress *address.Address
-	if hasRef {
-		refAddress = ref.MustLoadAddr()
-	}
-
-	return &models.SwapTransferNotification{
-		Hash:            rawTransactionWithHash.Hash,
-		Lt:              rawTransactionWithHash.Lt,
-		TransactionTime: rawTransactionWithHash.TransactionTime,
-		EventCatchTime:  rawTransactionWithHash.CatchEventTime,
-		QueryId:         queryId,
-		Amount:          jettonAmount,
-		Sender:          fromUser,
-		TokenWallet:     tokenWallet1,
-		MinOut:          minOut,
-		ToAddress:       toAddress,
-		ReferralAddress: refAddress,
-	}
 }

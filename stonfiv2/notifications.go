@@ -5,7 +5,7 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"log"
-	"strconv"
+	"math/big"
 	"time"
 	"tondexer/models"
 )
@@ -17,13 +17,13 @@ func parseTraceNotification(notification *tonapi.Trace) (*models.SwapTransferNot
 		return nil, err
 	}
 
-	amount, e := strconv.ParseUint(notificationInfo.Amount, 10, 64)
-	if e != nil {
-		log.Printf("error parsing amount for notification %v: %v\n", notification.Transaction.Hash, e)
+	amount, success := new(big.Int).SetString(notificationInfo.Amount, 10)
+	if !success {
+		log.Printf("error parsing amount '%v' for notification %v\n", notificationInfo.Amount, notification.Transaction.Hash)
 	}
-	minAmount, e := strconv.ParseUint(notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.MinOut, 10, 64)
-	if e != nil {
-		log.Printf("error parsing minAmount for notification %v: %v\n", notification.Transaction.Hash, e)
+	minAmount, success := new(big.Int).SetString(notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.MinOut, 10)
+	if !success {
+		log.Printf("error parsing minAmount '%v' for notification %v\n", notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.MinOut, notification.Transaction.Hash)
 	}
 	var referralAddress *address.Address
 	if notificationInfo.ForwardPayload.Value.Value.CrossSwapBody.RefAddress != "" {
@@ -70,7 +70,6 @@ type SwapValue struct {
 	TokenWallet1    string        `json:"token_wallet1"`
 	RefundAddress   string        `json:"refund_address"`
 	ExcessesAddress string        `json:"excesses_address"`
-	TxDeadline      int64         `json:"tx_deadline"`
 	CrossSwapBody   CrossSwapBody `json:"cross_swap_body"`
 }
 

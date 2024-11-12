@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
+	"math/big"
 	"testing"
 )
 
@@ -85,16 +86,16 @@ func Test_ExtractStonfiV2SwapsFromRootTrace(t *testing.T) {
 
 	swapInfo := swapInfos[0]
 
-	assert.Equal(t, "EQBOdxSlGhjxjVYVwi6blHxfS1tWsOXesMrA1npnuiWeOKgI", swapInfo.PoolAddress)
+	assert.Equal(t, address.MustParseAddr("EQBOdxSlGhjxjVYVwi6blHxfS1tWsOXesMrA1npnuiWeOKgI"), swapInfo.PoolAddress)
 
 	assert.Equal(t, "2e51309e3c0cefca28582f169038c2a0f2b49c7461b9a15beab5077b87394c66", swapInfo.Notification.Hash)
 	assert.Equal(t, uint64(50536543000003), swapInfo.Notification.Lt)
 	//assert.Equal(t, , swapInfo.Notification.TransactionTime)
 	assert.Equal(t, uint64(43265945712075), swapInfo.Notification.QueryId)
-	assert.Equal(t, uint64(1500000), swapInfo.Notification.Amount)
+	assert.Equal(t, big.NewInt(1500000), swapInfo.Notification.Amount)
 	assert.Equal(t, address.MustParseRawAddr("0:2fe5505095f1bd92f308baaf996287ef248bee540269e13cc816164152fdf7e8"), swapInfo.Notification.Sender)
 	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Notification.TokenWallet)
-	assert.Equal(t, uint64(309640709), swapInfo.Notification.MinOut)
+	assert.Equal(t, big.NewInt(309640709), swapInfo.Notification.MinOut)
 	assert.Equal(t, address.MustParseRawAddr("0:2fe5505095f1bd92f308baaf996287ef248bee540269e13cc816164152fdf7e8"), swapInfo.Notification.ToAddress)
 	assert.Equal(t, address.MustParseRawAddr("0:b089166b7d44a530cd1dcfe1e6e0a5b522a685cf53f0c60dfeb748d00eddfaa8"), swapInfo.Notification.ReferralAddress)
 
@@ -103,9 +104,9 @@ func Test_ExtractStonfiV2SwapsFromRootTrace(t *testing.T) {
 	assert.Equal(t, uint64(43265945712075), swapInfo.Payment.QueryId)
 	assert.Equal(t, address.MustParseRawAddr("0:2fe5505095f1bd92f308baaf996287ef248bee540269e13cc816164152fdf7e8"), swapInfo.Payment.Owner)
 	assert.Equal(t, uint64(3326308581), swapInfo.Payment.ExitCode)
-	assert.Equal(t, uint64(0), swapInfo.Payment.Amount0Out)
+	assert.Equal(t, big.NewInt(0), swapInfo.Payment.Amount0Out)
 	assert.Equal(t, address.MustParseRawAddr("0:40a0fe4e243dc71295bb6ea73491a3a020594c814ce2937219fd1a6fb308a4b5"), swapInfo.Payment.Token0WalletAddress)
-	assert.Equal(t, uint64(310885183), swapInfo.Payment.Amount1Out)
+	assert.Equal(t, big.NewInt(310885183), swapInfo.Payment.Amount1Out)
 	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Payment.Token1WalletAddress)
 
 	assert.Equal(t, "8bcefb3d042c10b4d86b817cc7ad85723c419855ddcac8d43e2e7a2f24cd4bf9", swapInfo.Referral.Hash)
@@ -113,9 +114,9 @@ func Test_ExtractStonfiV2SwapsFromRootTrace(t *testing.T) {
 	assert.Equal(t, uint64(43265945712075), swapInfo.Referral.QueryId)
 	assert.Equal(t, address.MustParseRawAddr("0:b089166b7d44a530cd1dcfe1e6e0a5b522a685cf53f0c60dfeb748d00eddfaa8"), swapInfo.Referral.Owner)
 	assert.Equal(t, uint64(0), swapInfo.Referral.ExitCode)
-	assert.Equal(t, uint64(0), swapInfo.Referral.Amount0Out)
+	assert.Equal(t, big.NewInt(0), swapInfo.Referral.Amount0Out)
 	assert.Equal(t, address.MustParseRawAddr("0:40a0fe4e243dc71295bb6ea73491a3a020594c814ce2937219fd1a6fb308a4b5"), swapInfo.Referral.Token0WalletAddress)
-	assert.Equal(t, uint64(311509), swapInfo.Referral.Amount1Out)
+	assert.Equal(t, big.NewInt(311509), swapInfo.Referral.Amount1Out)
 	assert.Equal(t, address.MustParseRawAddr("0:433b0d3c9cb130afd4d35f25c388fb81a201d933fd51938d8ab3c87e15090fdf"), swapInfo.Referral.Token1WalletAddress)
 }
 
