@@ -80,7 +80,6 @@ func latestSwaps(cfg *core.Config) func(c *gin.Context) {
 		}
 
 		swaps, e := persistence.ReadArrayFromClickhouse[persistence.EnrichedSwapCH](cfg, persistence.LatestSwapsSqlQuery(cfg, request.Limit))
-
 		if e != nil {
 			c.JSON(200, gin.H{"msg": e.Error()})
 			return

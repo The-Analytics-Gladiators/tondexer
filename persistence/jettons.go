@@ -2,17 +2,18 @@ package persistence
 
 import (
 	"fmt"
+	"math/big"
 	"tondexer/core"
 	"tondexer/models"
 )
 
 type JettonVolume struct {
-	JettonAddress  string  `json:"jetton_address" ch:"jetton_address"`
-	JettonSymbol   string  `json:"jetton_symbol" ch:"jetton_symbol"`
-	JettonName     string  `json:"jetton_name" ch:"jetton_name"`
-	JettonDecimals uint64  `json:"jetton_decimals" ch:"jetton_decimals"`
-	JettonAmount   uint64  `json:"jetton_amount" ch:"jetton_amount"`
-	JettonUsd      float64 `json:"jetton_usd" ch:"jetton_usd"`
+	JettonAddress  string   `json:"jetton_address" ch:"jetton_address"`
+	JettonSymbol   string   `json:"jetton_symbol" ch:"jetton_symbol"`
+	JettonName     string   `json:"jetton_name" ch:"jetton_name"`
+	JettonDecimals uint64   `json:"jetton_decimals" ch:"jetton_decimals"`
+	JettonAmount   *big.Int `json:"jetton_amount" ch:"jetton_amount"`
+	JettonUsd      float64  `json:"jetton_usd" ch:"jetton_usd"`
 }
 
 func TopJettonRequest(config *core.Config, period models.Period) string {

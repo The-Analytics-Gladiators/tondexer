@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 	"tondexer/core"
 	"tondexer/models"
@@ -47,18 +48,18 @@ type EnrichedSwapCH struct {
 	JettonInName      string    `ch:"jetton_in_name"`
 	JettonInUsdRate   float64   `ch:"jetton_in_usd_rate"`
 	JettonInDecimals  uint64    `ch:"jetton_in_decimals"`
-	AmountIn          uint64    `ch:"amount_in"`
+	AmountIn          *big.Int  `ch:"amount_in"`
 	InUsd             float64   `ch:"in_usd"`
 	JettonOut         string    `ch:"jetton_out"`
 	JettonOutSymbol   string    `ch:"jetton_out_symbol"`
 	JettonOutName     string    `ch:"jetton_out_name"`
 	JettonOutUsdRate  float64   `ch:"jetton_out_usd_rate"`
 	JettonOutDecimals uint64    `ch:"jetton_out_decimals"`
-	AmountOut         uint64    `ch:"amount_out"`
+	AmountOut         *big.Int  `ch:"amount_out"`
 	OutUsd            float64   `ch:"out_usd"`
-	MinAmountOut      uint64    `ch:"min_amount_out"`
+	MinAmountOut      *big.Int  `ch:"min_amount_out"`
 	ReferralAddress   string    `ch:"referral_address"`
-	ReferralAmount    uint64    `ch:"referral_amount"`
+	ReferralAmount    *big.Int  `ch:"referral_amount"`
 	ReferralUsd       float64   `ch:"referral_usd"`
 }
 

@@ -2,25 +2,26 @@ package persistence
 
 import (
 	"fmt"
+	"math/big"
 	"tondexer/core"
 	"tondexer/models"
 )
 
 type PoolVolume struct {
-	PoolAddress       string  `json:"pool_address" ch:"pool_address"`
-	JettonIn          string  `json:"jetton_in" ch:"jetton_in"`
-	AmountIn          uint64  `json:"amount_in" ch:"in_amount"`
-	AmountInUsd       float64 `json:"amount_in_usd" ch:"amount_in_usd"`
-	JettonInName      string  `json:"jetton_in_name" ch:"jetton_in_name"`
-	JettonInSymbol    string  `json:"jetton_in_symbol" ch:"jetton_in_symbol"`
-	JettonInDecimals  uint64  `json:"jetton_in_decimals" ch:"in_jetton_decimals"`
-	JettonOut         string  `json:"jetton_out" ch:"jetton_out"`
-	AmountOut         uint64  `json:"amount_out" ch:"out_amount"`
-	AmountOutUsd      float64 `json:"amount_out_usd" ch:"amount_out_usd"`
-	JettonOutName     string  `json:"jetton_out_name" ch:"jetton_out_name"`
-	JettonOutSymbol   string  `json:"jetton_out_symbol" ch:"jetton_out_symbol"`
-	JettonOutDecimals uint64  `json:"jetton_out_decimals" ch:"out_jetton_decimals"`
-	AmountUsd         float64 `json:"amount_usd" ch:"amount_usd"`
+	PoolAddress       string   `json:"pool_address" ch:"pool_address"`
+	JettonIn          string   `json:"jetton_in" ch:"jetton_in"`
+	AmountIn          *big.Int `json:"amount_in" ch:"in_amount"`
+	AmountInUsd       float64  `json:"amount_in_usd" ch:"amount_in_usd"`
+	JettonInName      string   `json:"jetton_in_name" ch:"jetton_in_name"`
+	JettonInSymbol    string   `json:"jetton_in_symbol" ch:"jetton_in_symbol"`
+	JettonInDecimals  uint64   `json:"jetton_in_decimals" ch:"in_jetton_decimals"`
+	JettonOut         string   `json:"jetton_out" ch:"jetton_out"`
+	AmountOut         *big.Int `json:"amount_out" ch:"out_amount"`
+	AmountOutUsd      float64  `json:"amount_out_usd" ch:"amount_out_usd"`
+	JettonOutName     string   `json:"jetton_out_name" ch:"jetton_out_name"`
+	JettonOutSymbol   string   `json:"jetton_out_symbol" ch:"jetton_out_symbol"`
+	JettonOutDecimals uint64   `json:"jetton_out_decimals" ch:"out_jetton_decimals"`
+	AmountUsd         float64  `json:"amount_usd" ch:"amount_usd"`
 }
 
 func TopPoolsRequest(config *core.Config, period models.Period) string {
