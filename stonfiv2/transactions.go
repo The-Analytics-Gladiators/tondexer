@@ -14,6 +14,7 @@ const payoutOpRefCode = "stonfi_pay_vault_v2"
 const stonfiRouterV2 = "stonfi_router_v2"
 
 type StonfiV2SwapTraces struct {
+	Root         *tonapi.Trace
 	Notification *tonapi.Trace
 	Payout       *tonapi.Trace
 	VaultPayout  *tonapi.Trace
@@ -55,6 +56,7 @@ func swapTracesToSwapInfo(swapTraces *StonfiV2SwapTraces) *models.SwapInfo {
 	}
 
 	return &models.SwapInfo{
+		TraceID:      swapTraces.Root.Transaction.Hash,
 		Notification: swapTransferNotification,
 		PoolAddress:  swapTraces.Pool,
 		Payment:      payout,
@@ -63,7 +65,7 @@ func swapTracesToSwapInfo(swapTraces *StonfiV2SwapTraces) *models.SwapInfo {
 }
 
 func findSwapTraces(root *tonapi.Trace) []*StonfiV2SwapTraces {
-	var swaps []*StonfiV2SwapTraces
+	var swapTraces []*StonfiV2SwapTraces
 
 	var findNextSwap func(trace *tonapi.Trace)
 
@@ -74,7 +76,7 @@ func findSwapTraces(root *tonapi.Trace) []*StonfiV2SwapTraces {
 			payout := findPayoutForNotification(notification)
 			vaultPayout := findVaultPayoutForNotification(notification)
 			if payout != nil {
-				swaps = append(swaps, &StonfiV2SwapTraces{
+				swapTraces = append(swapTraces, &StonfiV2SwapTraces{
 					Notification: notification,
 					Payout:       payout,
 					VaultPayout:  vaultPayout,
@@ -90,7 +92,10 @@ func findSwapTraces(root *tonapi.Trace) []*StonfiV2SwapTraces {
 		}
 	}
 	findNextSwap(root)
-	return swaps
+	for _, swapTrace := range swapTraces {
+		swapTrace.Root = root
+	}
+	return swapTraces
 }
 
 func findRouterTransferNotificationNodes(root *tonapi.Trace) []*tonapi.Trace {

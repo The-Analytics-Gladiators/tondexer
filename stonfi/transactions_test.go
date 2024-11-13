@@ -188,3 +188,17 @@ func TestExtractSwapsFromRegularSwapWithRefSameAsSender(t *testing.T) {
 	assert.Equal(t, big.NewInt(736514443), swap.Referral.Amount0Out)
 	assert.Equal(t, address.MustParseAddr("EQBCwe_IObXA4Mt3RbcHil2s4-v4YQS3wUDt1-DvZOceeMGO"), swap.PoolAddress)
 }
+
+func TestTraceIDOfSwapInfo(t *testing.T) {
+	client, _ := tonapi.New()
+
+	params := tonapi.GetTraceParams{TraceID: "f020893c2b8ac55b477211ad0be0eae87ef106092cfaa76b2e6448c140b612b5"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swaps := ExtractStonfiSwapsFromRootTrace(trace)
+
+	assert.Equal(t, 1, len(swaps))
+	swap := swaps[0]
+
+	assert.Equal(t, "436a2721b414b982cdea4cde35d633550876cf3836f2e8cefec3e92d520467a7", swap.TraceID)
+}

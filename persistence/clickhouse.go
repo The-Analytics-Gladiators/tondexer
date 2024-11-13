@@ -182,6 +182,7 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 				model.ReferralAddress,
 				model.ReferralAmount,
 				model.CatchTime,
+				model.TraceID,
 			)
 
 			if e != nil {

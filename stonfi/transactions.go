@@ -42,13 +42,13 @@ func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*models.SwapInfo {
 	findNextSwap(trace)
 
 	stonfiSwaps := core.Map(swaps, func(re RelatedEvents[tonapi.Trace, tonapi.Trace]) *models.SwapInfo {
-		return relatedEventsToSwapInfo(re)
+		return relatedEventsToSwapInfo(re, trace)
 	})
 
 	return core.Filter(stonfiSwaps, func(swap *models.SwapInfo) bool { return swap != nil })
 }
 
-func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Trace]) *models.SwapInfo {
+func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Trace], root *tonapi.Trace) *models.SwapInfo {
 	if relatedEvents.Notification == nil {
 		log.Printf("Warning: no notification at relatedEvents \n")
 		return nil
@@ -86,6 +86,7 @@ func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Tr
 		return request.ExitCode == SwapRefPaymentCode
 	})
 	result := &models.SwapInfo{
+		TraceID:      root.Transaction.Hash,
 		Notification: notification,
 		Payment:      payment,
 	}

@@ -25,6 +25,7 @@ const jettonTransferOpCode = "0x0f8a7ea5"
 var stonfiPtonWallet = address.MustParseAddr("EQARULUYsmJq1RiZ-YiH-IJLcAZUVkVff-KBPwEmmaQGH6aC")
 
 type DedustSwapTraces struct {
+	Root                   *tonapi.Trace
 	OptInVaultWalletTrace  OptTrace
 	InVaultTrace           *tonapi.Trace
 	PoolTrace              *tonapi.Trace
@@ -70,6 +71,7 @@ func findSwapTraces(root *tonapi.Trace) []*DedustSwapTraces {
 			trace.Children[0].Children[0].Transaction.Account.Address != trace.Transaction.Account.Address {
 
 			swapTraces := &DedustSwapTraces{
+				Root:          root,
 				InVaultTrace:  trace,
 				PoolTrace:     &trace.Children[0],
 				OutVaultTrace: &trace.Children[0].Children[0],
@@ -144,6 +146,7 @@ func swapInfoFromDedustTraces(swapTraces *DedustSwapTraces) (*models.SwapInfo, e
 	}
 
 	return &models.SwapInfo{
+		TraceID:      swapTraces.Root.Transaction.Hash,
 		Notification: swapTransferNotification,
 		Payment:      payment,
 		Referral:     referral,

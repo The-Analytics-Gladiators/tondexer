@@ -8,6 +8,7 @@ import (
 )
 
 type SwapInfo struct {
+	TraceID      string //hash of first transaction
 	Notification *SwapTransferNotification
 	Payment      *PayoutRequest
 	Referral     *PayoutRequest

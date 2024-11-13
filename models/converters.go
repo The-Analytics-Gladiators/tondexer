@@ -116,5 +116,6 @@ func ToChSwap(swap *SwapInfo,
 		ReferralAddress:   referralAddress,
 		ReferralAmount:    referralAmount,
 		CatchTime:         swap.Notification.EventCatchTime,
+		TraceID:           swap.TraceID,
 	}
 }

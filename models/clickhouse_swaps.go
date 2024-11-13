@@ -28,4 +28,5 @@ type SwapCH struct {
 	ReferralAddress   string    `ch:"referral_address"`
 	ReferralAmount    *big.Int  `ch:"referral_amount"`
 	CatchTime         time.Time `ch:"catch_time"`
+	TraceID           string    `ch:"trace_id"`
 }

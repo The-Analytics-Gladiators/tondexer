@@ -118,6 +118,18 @@ func TestNotificationParsingToTokenFromTonSwap(t *testing.T) {
 	assert.Equal(t, address.MustParseRawAddr("0:06fe05fea040552ce0090cfa9a93a53fecf7639b71f8eb4abedbe8398c9a98b7"), notification.ReferralAddress)
 }
 
+func TestTraceIdIsSetForSwapInfo(t *testing.T) {
+	client, _ := tonapi.New()
+	params := tonapi.GetTraceParams{TraceID: "87bcc2cfbfc23228d7c27d179bea253c9acfa5899183f05e857a5ec4f63e204c"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapTraces := findSwapTraces(trace)
+
+	swapInfo, _ := swapInfoFromDedustTraces(swapTraces[0])
+
+	assert.Equal(t, "", swapInfo.TraceID)
+}
+
 func TestPaymentParsingForTokenForTokenSwap(t *testing.T) {
 	client, _ := tonapi.New()
 	params := tonapi.GetTraceParams{TraceID: "c63df8e487c3f516847f56c596913b4ed4267a15ca7a5b12557827c05fbbb8f6"}
@@ -204,9 +216,48 @@ func TestParseBigLimitAndAmount(t *testing.T) {
 	swapTraces := findSwapTraces(trace)
 
 	swapInfo, _ := swapInfoFromDedustTraces(swapTraces[0])
+	minOut, _ := new(big.Int).SetString("1863165402175570856823", 10)
+	amount1Out, _ := new(big.Int).SetString("1865030432608179035859", 10)
+	assert.Equal(t, big.NewInt(92880000000), swapInfo.Notification.Amount)
+	assert.Equal(t, minOut, swapInfo.Notification.MinOut)
+	assert.Equal(t, big.NewInt(0), swapInfo.Payment.Amount0Out)
+	assert.Equal(t, amount1Out, swapInfo.Payment.Amount1Out)
 	println(swapInfo)
 }
 
+func TestWhenInitialAccountHasTwoOutgoingMessages(t *testing.T) {
+	client, _ := tonapi.New()
+	params := tonapi.GetTraceParams{TraceID: "5ac93cd223409580fcdd4c0899e9a88f3acf831cb1fffbb742ca0ec6103a0cbb"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapTraces := findSwapTraces(trace)
+	assert.Equal(t, 1, len(swapTraces))
+	swapInfo, _ := swapInfoFromDedustTraces(swapTraces[0])
+
+	assert.Equal(t, "169c4dc18637c7b7b884434b537511d9f6cd86b43770bfdb377ee3d13b5aedfe", swapInfo.Notification.Hash)
+	assert.Equal(t, "2d9296f210fa739bbb36c67109b68c8d815fb3e64731c4d6a38c7b0e8be5204f", swapInfo.Payment.Hash)
+}
+
+func TestRootTrace(t *testing.T) {
+	client, _ := tonapi.New()
+	params := tonapi.GetTraceParams{TraceID: "dd4500f05ae7c10d96bd446e1eada3aa5eae08e74dbf6b165d32ba498e63b46d"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapTraces := findSwapTraces(trace)
+
+	assert.Equal(t, "5ac93cd223409580fcdd4c0899e9a88f3acf831cb1fffbb742ca0ec6103a0cbb", swapTraces[0].Root.Transaction.Hash)
+}
+
+func TestTraceIFForSwapInfo(t *testing.T) {
+	client, _ := tonapi.New()
+	params := tonapi.GetTraceParams{TraceID: "0b4bf597f1a07d0a97ab8cc7c1e961c2013ba974c4708487eab2afc7ba3e0b76"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapInfos := ExtractDedustSwapsFromRootTrace(trace)
+
+	assert.Equal(t, 1, len(swapInfos))
+	assert.Equal(t, "7b292e40f678bd0cb85a338b6a9431a599923db67672a3deba10117218b5e7dc", swapInfos[0].TraceID)
+}
+
 // https://tonviewer.com/transaction/3bc93c9d4696ec75b1e44106f613215e4eaab00894f80bb6cd58ee5aba67b39a both dedust and stonfiv2 and arbitrage
-// https://tonviewer.com/transaction/5ac93cd223409580fcdd4c0899e9a88f3acf831cb1fffbb742ca0ec6103a0cbb - initial transaction has 2 outgoing messages!
 // https://tonviewer.com/transaction/bbea35f5402a7c99530eaa83ce13daa444ad8ebe47d60257e362848f9336ca91 - 3 swaps stonfi and dedust

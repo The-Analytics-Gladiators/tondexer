@@ -180,7 +180,7 @@ func recalculateUsdRates(config *core.Config, consoleApi *core.TonConsoleApi, ca
 			}
 			jettonRates = append(jettonRates, jettonRate)
 		}
-		if i%20 == 0 {
+		if i%40 == 0 {
 			if e := writeBatch(jettonRates); e == nil {
 				jettonRates = []*models.JettonRate{}
 			} else {

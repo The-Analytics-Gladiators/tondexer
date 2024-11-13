@@ -68,6 +68,7 @@ func Test_findNextSwapTraces(t *testing.T) {
 
 	assert.Equal(t, 1, len(swapTraces))
 
+	assert.Equal(t, "99be02372148a163a9eea662b6495a3f89978283587de137eb69cfdf1a3c9088", swapTraces[0].Root.Transaction.Hash)
 	assert.Equal(t, "da078ef96bd798a9c635cad5bcbe728f1f163c0ad9d5695a91664a09c09a2493", swapTraces[0].Notification.Transaction.Hash)
 	assert.Equal(t, "9f16a7012fdc003475d84286367d8f61656d7acb2c217cbc1a191bbe637d3853", swapTraces[0].Payout.Transaction.Hash)
 	assert.Equal(t, "722bc3e2a5a5edc0579090beb9dd4eb572f35103c6eb371742b4a78aa2f3a18d", swapTraces[0].VaultPayout.Transaction.Hash)
@@ -141,4 +142,16 @@ func Test_TransactionWithSmthFailed(t *testing.T) {
 	swapInfos := ExtractStonfiV2SwapsFromRootTrace(trace)
 
 	assert.Equal(t, 1, len(swapInfos))
+}
+
+func TestTraceIDOfSwapInfo(t *testing.T) {
+	// in fact query id does not fit into int64 - only uint64
+	client, _ := tonapi.New()
+
+	params := tonapi.GetTraceParams{TraceID: "093e92969e33af9d162c23724d4581a7c137ceecab5641bb9a1c4b191c34a95a"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	swapInfos := ExtractStonfiV2SwapsFromRootTrace(trace)
+
+	assert.Equal(t, "eb6bd05dc1c0e4a7c6b3ffdca589e2634112ffc3fb2446697695cb8bd4371821", swapInfos[0].TraceID)
 }
