@@ -52,7 +52,7 @@ func (set *EvictableSet[T]) Add(t T) time.Time {
 func (set *EvictableSet[T]) Evict() []T {
 	var evicted []T
 	for k, v := range set.mp {
-		if v.After(time.Now().Add(set.ExpirationSeconds)) {
+		if time.Now().After(v.Add(set.ExpirationSeconds)) {
 			delete(set.mp, k)
 			evicted = append(evicted, k)
 		}
