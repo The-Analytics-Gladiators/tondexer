@@ -15,6 +15,7 @@ type PeriodRequest struct {
 
 func main() {
 	var cfg core.Config
+
 	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
 		panic(err)
 	}
