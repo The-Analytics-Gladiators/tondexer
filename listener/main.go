@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/tonkeeper/tonapi-go"
 	"log"
+	"math/big"
 	"os"
 	"time"
 	"tondexer/core"
@@ -16,15 +19,11 @@ import (
 	"tondexer/stonfiv2"
 )
 
-//type IncomingHash struct {
-//	Hash string
-//}
-
 func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, accounts []string, incomingTransactionsChannel chan string) {
 	for {
 		e := streamingApi.WebsocketHandleRequests(context.Background(), func(ws tonapi.Websocket) error {
 			ws.SetTransactionHandler(func(data tonapi.TransactionEventData) {
-				log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
+				//log.Printf("New tx with hash: %v lt: %v \n", data.TxHash, data.Lt)
 				go func() {
 					incomingTransactionsChannel <- data.TxHash
 				}()
@@ -37,6 +36,7 @@ func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, accounts []string, i
 		if e != nil {
 			log.Printf("Streaming failed! for accounts %v: %v \n", accounts, e)
 		}
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -47,22 +47,6 @@ func swapInfoWithDex(infos []*models.SwapInfo, dex string) []core.Pair[*models.S
 			Second: dex,
 		}
 	})
-}
-
-func hasIntersection(slice1, slice2 []string) bool {
-	elements := make(map[string]bool)
-
-	for _, item := range slice1 {
-		elements[item] = true
-	}
-
-	for _, item := range slice2 {
-		if elements[item] {
-			return true
-		}
-	}
-
-	return false
 }
 
 func main() {
@@ -117,6 +101,7 @@ func main() {
 			case <-transactionsTicker.C:
 				evicted := transactionsWaitingList.Evict()
 				go func() { readyTransactionsChannel <- evicted }()
+				log.Printf("%v transaction hashes was sent for processing\n", len(evicted))
 			}
 		}
 	}()
@@ -143,6 +128,7 @@ func main() {
 		return rate.(*float64)
 	}
 	swapChChannel := make(chan []*models.SwapCH)
+	swapChArbitrageDetectorChannel := make(chan []*models.SwapCH)
 
 	alreadySeenHashes := core.NewEvictableSet[string](3 * time.Minute)
 
@@ -195,21 +181,69 @@ func main() {
 			go func() {
 				swapChChannel <- newModels
 			}()
+			go func() {
+				swapChArbitrageDetectorChannel <- newModels
+			}()
 
 			alreadySeenHashes.Evict()
 			savedToChTransactionsHashes.Evict()
 		}
 	}()
 
-	for {
-		select {
-		case chModels := <-swapChChannel:
-			if chModels != nil {
-				e := persistence.SaveSwapsToClickhouse(&cfg, chModels)
-				if e != nil {
-					log.Printf("Warning: Unable to save models %v\n", e)
+	go func() {
+		for {
+			select {
+			case chModels := <-swapChChannel:
+				if chModels != nil {
+					e := persistence.SaveSwapsToClickhouse(&cfg, chModels)
+					if e != nil {
+						log.Printf("Warning: Unable to save models %v\n", e)
+					}
 				}
 			}
 		}
+	}()
+
+	processedChModels := core.NewEvictableSet[*models.SwapCH](15 * time.Minute)
+	for {
+		chModels := <-swapChArbitrageDetectorChannel
+		for _, model := range chModels {
+			processedChModels.Add(model)
+		}
+
+		all := processedChModels.Elements()
+
+		outMap := map[string]*models.SwapCH{}
+		for _, model := range all {
+			outMap[tokenAmountHash(model.JettonOut, model.AmountOut)] = model
+		}
+
+		var arbitrages []*models.ArbitrageCH
+		for _, secondSwap := range all {
+			firstSwap, exist := outMap[tokenAmountHash(secondSwap.JettonIn, secondSwap.AmountIn)]
+			if exist && secondSwap != firstSwap && firstSwap.JettonIn == secondSwap.JettonOut {
+				// amounts are most like equals because of the hashes matched
+				processedChModels.Remove(firstSwap)
+				processedChModels.Remove(secondSwap)
+
+				arbitrage := models.SwapsToArbitrage(firstSwap, secondSwap)
+				log.Printf("Arbitrage fucker detected! %v\n", arbitrage)
+				arbitrages = append(arbitrages, arbitrage)
+			}
+		}
+
+		if len(arbitrages) > 0 {
+			if e := persistence.WriteArbitragesToClickhouse(&cfg, arbitrages); e != nil {
+				log.Printf("Warning: Unable to save arbitrages %v\n", e)
+			}
+		}
+		processedChModels.Evict()
 	}
+}
+
+func tokenAmountHash(token string, amount *big.Int) string {
+	h := sha256.New()
+	h.Write([]byte(token))
+	h.Write([]byte(amount.String()))
+	return hex.EncodeToString(h.Sum(nil))
 }

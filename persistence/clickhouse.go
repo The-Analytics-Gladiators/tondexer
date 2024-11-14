@@ -45,7 +45,6 @@ func WriteToClickhouse[T any](config *core.Config, entities []*T, table string, 
 		return err
 	} else {
 		for _, model := range entities {
-			log.Printf("CH Model %v \n", model)
 			e := batchFunc(batch, model)
 
 			if e != nil {
@@ -60,10 +59,40 @@ func WriteToClickhouse[T any](config *core.Config, entities []*T, table string, 
 			if e != nil {
 				log.Printf("Clickhouse insert issue: %v \n", e)
 				return err
+			} else {
+				log.Printf("Batch of %v entities has been written to %v\n", len(entities), table)
 			}
 		}
 		return nil
 	}
+}
+
+func WriteArbitragesToClickhouse(config *core.Config, arbitrages []*models.ArbitrageCH) error {
+	return WriteToClickhouse(config, arbitrages, "arbitrages", func(batch driver.Batch, model *models.ArbitrageCH) error {
+		return batch.Append(
+			model.Sender,
+			model.Time,
+
+			model.AmountIn,
+			model.AmountOut,
+			model.Jetton,
+			model.JettonName,
+			model.JettonSymbol,
+			model.JettonUsdRate,
+			model.JettonDecimals,
+
+			model.AmountsPath,
+			model.JettonsPath,
+			model.JettonNames,
+			model.JettonSymbols,
+			model.JettonUsdRates,
+			model.JettonsDecimals,
+
+			model.PoolsPath,
+			model.TraceIDs,
+			model.Dexes,
+		)
+	})
 }
 
 func ReadClickhouseJettons(config *core.Config) ([]models.ClickhouseJetton, error) {
@@ -158,7 +187,6 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 		return err
 	} else {
 		for _, model := range modelsBatch {
-			log.Printf("CH Model %v \n", model)
 			e := batch.Append(
 				model.Dex,
 				model.Hashes,
@@ -194,6 +222,7 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 
 		if len(modelsBatch) != 0 {
 			e := batch.Send()
+			log.Printf("Batch of %v swaps has been written \n", len(modelsBatch))
 			if e != nil {
 				log.Printf("Clickhouse insert issue: %v \n", e)
 				return err

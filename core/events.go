@@ -65,3 +65,18 @@ func (set *EvictableSet[T]) Exists(t T) bool {
 	_, exists := set.mp[t]
 	return exists
 }
+
+func (set *EvictableSet[T]) Elements() []T {
+	values := make([]T, 0, len(set.mp))
+
+	// Loop through the map to get all values
+	for key, _ := range set.mp {
+		values = append(values, key)
+	}
+
+	return values
+}
+
+func (set *EvictableSet[T]) Remove(t T) {
+	delete(set.mp, t)
+}
