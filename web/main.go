@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/ilyakaznacheev/cleanenv"
+	"log"
 	"os"
 	"tondexer/core"
 	"tondexer/models"
@@ -56,16 +57,19 @@ func periodArrayRequest[T any](cfg *core.Config, fetchEntitiesFunc func(config *
 	return func(c *gin.Context) {
 		var request PeriodRequest
 		if err := c.ShouldBindQuery(&request); err != nil {
+			log.Printf("Error binding request %v\n", err)
 			c.JSON(400, gin.H{"msg": err.Error()})
 			return
 		}
 		period, e := models.ParsePeriod(request.Period)
 		if e != nil {
+			log.Printf("Invalid period: %v\n", request.Period)
 			c.JSON(400, gin.H{"msg": e.Error()})
 		}
 
 		entities, e := fetchEntitiesFunc(cfg, period)
 		if e != nil {
+			log.Printf("Error queryin entities: %v\n", e)
 			c.JSON(500, gin.H{"msg": e.Error()})
 		}
 
