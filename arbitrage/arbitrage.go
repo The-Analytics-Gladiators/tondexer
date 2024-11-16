@@ -37,15 +37,26 @@ func findArbitrageChain(firstSwap *models.SwapCH, inMap map[string]*models.SwapC
 
 	swaps := []*models.SwapCH{firstSwap}
 
-	for jettons.Contract(jettonOut) != jettons.Contract(firstSwap.JettonIn) {
+	i := 0
+	for jettons.Contract(jettonOut) != jettons.Contract(firstSwap.JettonIn) && i <= 10 { // breaking the loop
 		if nextSwap, exists := inMap[tokenAmountHash(jettons.Contract(jettonOut), amountOut, decimalsOut)]; exists {
+			for _, seenSwap := range swaps {
+				if nextSwap.Hashes[0] == seenSwap.Hashes[0] {
+					// break the endless loop!
+					return nil, []*models.SwapCH{}
+				}
+			}
 			swaps = append(swaps, nextSwap)
 			jettonOut = nextSwap.JettonOut
 			amountOut = nextSwap.AmountOut
 			decimalsOut = nextSwap.JettonOutDecimals
+			i++
 		} else {
 			return nil, []*models.SwapCH{}
 		}
+	}
+	if i >= 10 {
+		return nil, []*models.SwapCH{}
 	}
 	return SwapsToArbitrage(swaps), swaps
 }
