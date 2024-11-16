@@ -149,7 +149,7 @@ func ReadSummaryStats(config *core.Config, period models.Period) (*SummaryStats,
 
 	row := conn.QueryRow(context.Background(), fmt.Sprintf(`
 SELECT
-    toUInt64(sum(%v) + sum(%v)) AS volume,
+    toUInt64((sum(%v) + sum(%v)) / 2) AS volume,
     count() AS number,
     length(groupUniqArrayArray([jetton_in, jetton_out])) AS unique_tokens,
     uniq(sender) AS unique_users

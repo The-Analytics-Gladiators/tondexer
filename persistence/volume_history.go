@@ -20,8 +20,8 @@ func VolumeHistorySqlQuery(config *core.Config, period models.Period) string {
 	return fmt.Sprint(`
 SELECT `,
 		periodParams.ToStartOf, `(time) AS period,
-    toUInt256(sumIf(`, UsdInField, `, dex = 'StonfiV1' OR dex = 'StonfiV2') + sumIf(`, UsdOutField, `, dex = 'StonfiV1' OR dex = 'StonfiV2')) / 2 AS stonfi_volume_usd,
-    toUInt256(sumIf(`, UsdInField, `, dex = 'DeDust') + sumIf(`, UsdOutField, `, dex = 'DeDust')) / 2 AS dedust_volume_usd,
+    toUInt256((sumIf(`, UsdInField, `, dex = 'StonfiV1' OR dex = 'StonfiV2') + sumIf(`, UsdOutField, `, dex = 'StonfiV1' OR dex = 'StonfiV2')) / 2) AS stonfi_volume_usd,
+    toUInt256((sumIf(`, UsdInField, `, dex = 'DeDust') + sumIf(`, UsdOutField, `, dex = 'DeDust')) / 2) AS dedust_volume_usd,
     count() AS number
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
