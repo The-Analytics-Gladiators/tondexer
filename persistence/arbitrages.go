@@ -21,11 +21,12 @@ func ArbitrageHistorySqlQuery(config *core.Config, period models.Period) string 
 	return fmt.Sprint(`
 SELECT `,
 		periodParams.ToStartOf, `(time) AS period,
-	sum(`, UsdField("out"), ` - `, UsdField("in"), `) AS usd_profit,
+	sum((`, UsdField("out"), ` - `, UsdField("in"), `) AS usd_diff) AS usd_profit,
 	sum(`, UsdField("in"), `) AS usd_volume,
 	count() AS number
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND usd_diff > 0
 GROUP BY period
 ORDER BY period ASC WITH FILL STEP `, periodParams.ToInterval, `(1)`,
 	)

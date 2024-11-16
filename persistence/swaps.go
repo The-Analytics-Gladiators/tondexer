@@ -92,3 +92,37 @@ ORDER BY (in_usd + out_usd) DESC
 LIMIT 15
 `)
 }
+
+type SwapDistribution struct {
+	Usd_1        uint64 `ch:"usd_1" json:"usd_1"`
+	Usd_1_5      uint64 `ch:"usd_1_5" json:"usd_1_5"`
+	Usd_5_15     uint64 `ch:"usd_5_15" json:"usd_5_15"`
+	Usd_15_50    uint64 `ch:"usd_15_50" json:"usd_15_50"`
+	Usd_50_150   uint64 `ch:"usd_50_150" json:"usd_50_150"`
+	Usd_150_500  uint64 `ch:"usd_150_500" json:"usd_150_500"`
+	Usd_500_2000 uint64 `ch:"usd_500_2000" json:"usd_500_2000"`
+	Usd_2000     uint64 `ch:"usd_2000" json:"usd_2000"`
+}
+
+func SwapsDistributionSqlQuery(config *core.Config, period models.Period, dex models.Dex) string {
+	periodParams := models.PeriodParamsMap[period]
+	return fmt.Sprint(`
+SELECT
+    countIf(usd <= 1) AS usd_1,
+    countIf((usd > 1) AND (usd <= 5)) AS usd_1_5,
+    countIf((usd > 5) AND (usd < 15)) AS usd_5_15,
+    countIf((usd >= 15) AND (usd < 50)) AS usd_15_50,
+    countIf((usd >= 50) AND (usd < 150)) AS usd_50_150,
+    countIf((usd >= 150) AND (usd < 500)) AS usd_150_500,
+    countIf((usd >= 500) AND (usd < 2000)) AS usd_500_2000,
+    countIf(usd >= 2000) AS usd_2000
+FROM
+(
+    SELECT
+        (`, UsdInField, ` + `, UsdOutField, `) / 2 AS usd
+	FROM `, config.DbName, `.swaps
+	WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+	AND `, dex.WhereStatement("dex"), `
+)
+`)
+}

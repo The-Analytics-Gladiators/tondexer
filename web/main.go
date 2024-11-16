@@ -27,7 +27,9 @@ func main() {
 	}
 	route := gin.Default()
 
-	route.GET("/api/summary", summary(&cfg))
+	route.GET("/api/summary", oneRowPeriodDexRequest[persistence.SummaryStats](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.SwapsSummarySql(cfg, period, dex)
+	}))
 	route.GET("/api/swaps/latest", latestSwaps(&cfg))
 	route.GET("/api/volumeHistory", periodDexArrayRequest(&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.VolumeHistoryEntry, error) {
 		return persistence.ReadArrayFromClickhouse[persistence.VolumeHistoryEntry](config, persistence.VolumeHistorySqlQuery(config, period, dex))
@@ -55,6 +57,9 @@ func main() {
 		return persistence.ReadArrayFromClickhouse[persistence.ArbitrageHistoryEntry](config, persistence.ArbitrageHistorySqlQuery(config, period))
 	}))
 	route.GET("/api/arbitrages/latest", latestArbitrages(&cfg))
+	route.GET("/api/swaps/distribution", oneRowPeriodDexRequest[persistence.SwapDistribution](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.SwapsDistributionSqlQuery(cfg, period, dex)
+	}))
 
 	route.Run(":8088")
 }
@@ -146,7 +151,6 @@ func latestSwaps(cfg *core.Config) func(c *gin.Context) {
 	}
 }
 
-// TODO refactor latest*
 func latestArbitrages(cfg *core.Config) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var request struct {
@@ -167,7 +171,7 @@ func latestArbitrages(cfg *core.Config) func(c *gin.Context) {
 	}
 }
 
-func summary(cfg *core.Config) func(c *gin.Context) {
+func oneRowPeriodDexRequest[T any](cfg *core.Config, sqlFunc func(cfg *core.Config, period models.Period, dex models.Dex) string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var request DexPeriodRequest
 
@@ -181,12 +185,12 @@ func summary(cfg *core.Config) func(c *gin.Context) {
 			c.JSON(400, gin.H{"msg": e.Error()})
 		}
 
-		summary, e := persistence.ReadSummaryStats(cfg, period, dex)
+		result, e := persistence.ReadSingleRow[T](cfg, sqlFunc(cfg, period, dex))
 		if e != nil {
-			log.Printf("Error querying summary: %v\n", e)
+			log.Printf("Error querying one row: %v\n", e)
 			c.JSON(500, gin.H{"msg": e.Error()})
 		}
 
-		c.JSON(200, summary)
+		c.JSON(200, result)
 	}
 }

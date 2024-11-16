@@ -138,34 +138,21 @@ type SummaryStats struct {
 	UniqueUsers  uint64 `ch:"unique_users" json:"unique_users"`
 }
 
-func ReadSummaryStats(config *core.Config, period models.Period, dex models.Dex) (*SummaryStats, error) {
+func ReadSingleRow[T any](config *core.Config, sql string) (*T, error) {
 	conn, err := connection(config)
 	if err != nil {
 		return nil, err
 	}
 
 	defer conn.Close()
-	periodParams := models.PeriodParamsMap[period]
+	row := conn.QueryRow(context.Background(), sql)
 
-	row := conn.QueryRow(context.Background(), fmt.Sprintf(`
-SELECT
-    toUInt64((sum(%v) + sum(%v)) / 2) AS volume,
-    count() AS number,
-    length(groupUniqArrayArray([jetton_in, jetton_out])) AS unique_tokens,
-    uniq(sender) AS unique_users
-FROM %v.swaps
-WHERE time >= %v(subtractDays(now(), %v))
-AND %v`, UsdInField, UsdOutField,
-		config.DbName, periodParams.ToStartOf, periodParams.WindowInDays,
-		dex.WhereStatement("dex")))
-
-	var stats SummaryStats
-	err = row.ScanStruct(&stats)
+	var res T
+	err = row.ScanStruct(&res)
 	if err != nil {
 		return nil, err
 	}
-
-	return &stats, nil
+	return &res, nil
 }
 
 func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) error {
