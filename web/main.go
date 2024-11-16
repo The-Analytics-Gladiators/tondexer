@@ -45,6 +45,10 @@ func main() {
 	route.GET("/api/profiters/top", periodArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period) ([]persistence.UserVolume, error) {
 		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopUsersProfiters(config, period))
 	}))
+	route.GET("/api/arbitrages/volumeHistory", periodArrayRequest(&cfg, func(config *core.Config, period models.Period) ([]persistence.ArbitrageHistoryEntry, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.ArbitrageHistoryEntry](config, persistence.ArbitrageHistorySqlQuery(config, period))
+	}))
+	route.GET("/api/arbitrages/latest", latestArbitrages(&cfg))
 
 	route.Run(":8088")
 }
@@ -81,6 +85,27 @@ func latestSwaps(cfg *core.Config) func(c *gin.Context) {
 		}
 
 		swaps, e := persistence.ReadArrayFromClickhouse[persistence.EnrichedSwapCH](cfg, persistence.LatestSwapsSqlQuery(cfg, request.Limit))
+		if e != nil {
+			c.JSON(200, gin.H{"msg": e.Error()})
+			return
+		}
+
+		c.JSON(200, swaps)
+	}
+}
+
+// TODO refactor latest*
+func latestArbitrages(cfg *core.Config) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var request struct {
+			Limit uint64 `form:"limit"`
+		}
+		if err := c.ShouldBindQuery(&request); err != nil {
+			c.JSON(400, gin.H{"msg": err.Error()})
+			return
+		}
+
+		swaps, e := persistence.ReadArrayFromClickhouse[persistence.EnrichedArbitrageCH](cfg, persistence.LatestArbitragesSqlQuery(cfg, request.Limit))
 		if e != nil {
 			c.JSON(200, gin.H{"msg": e.Error()})
 			return

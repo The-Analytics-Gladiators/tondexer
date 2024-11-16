@@ -40,7 +40,7 @@ func SwapsToArbitrage(swap1, swap2 *SwapCH) *ArbitrageCH {
 		JettonUsdRate:   swap1.JettonInUsdRate,
 		JettonDecimals:  swap1.JettonInDecimals,
 		AmountOut:       swap2.AmountOut,
-		AmountsPath:     []*big.Int{swap1.AmountIn, swap1.AmountOut, swap1.AmountOut},
+		AmountsPath:     []*big.Int{swap1.AmountIn, swap1.AmountOut, swap2.AmountOut},
 		JettonsPath:     []string{swap1.JettonIn, swap1.JettonOut, swap2.JettonOut},
 		JettonNames:     []string{swap1.JettonInName, swap1.JettonOutName, swap2.JettonOutName},
 		JettonSymbols:   []string{swap1.JettonInSymbol, swap1.JettonOutSymbol, swap2.JettonOutSymbol},

@@ -7,10 +7,11 @@ import (
 )
 
 type UserVolume struct {
-	UserAddress string  `json:"user_address" ch:"sender"`
-	AmountUsd   float64 `json:"amount_usd" ch:"amount_usd"`
-	Tokens      uint64  `json:"tokens" ch:"tokens"`
-	Count       uint64  `json:"count" ch:"count"`
+	UserAddress string   `json:"user_address" ch:"sender"`
+	AmountUsd   float64  `json:"amount_usd" ch:"amount_usd"`
+	Tokens      uint64   `json:"tokens" ch:"tokens"`
+	TopTokens   []string `json:"top_tokens" ch:"top_tokens"`
+	Count       uint64   `json:"count" ch:"count"`
 }
 
 func TopReferrersRequest(config *core.Config, period models.Period) string {
@@ -20,6 +21,7 @@ SELECT
     referral_address AS sender,
     sum(`, UsdReferralField, `) AS amount_usd,
     uniq(jetton_out) AS tokens,
+	topK(jetton_out_symbol) AS top_tokens,
     count() AS count
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
@@ -36,6 +38,7 @@ SELECT
     sender,
     sum(`, UsdInField, ` + `, UsdOutField, `) AS amount_usd,
     uniqArray([jetton_in, jetton_out]) AS tokens,
+	topK(5)(jetton_in_symbol) AS top_tokens,
     count() AS count
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
@@ -52,6 +55,7 @@ SELECT
     sender,
     sum(`, UsdOutField, ` - `, UsdInField, `) AS amount_usd,
     uniqArray([jetton_in, jetton_out]) AS tokens,
+	topK(5)(jetton_in_symbol) as top_tokens,
     count() AS count
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))

@@ -239,7 +239,7 @@ func ReadArrayFromClickhouse[T any](config *core.Config, query string) ([]T, err
 	}
 
 	defer conn.Close()
-
+	println(query)
 	rows, err := conn.Query(context.Background(), query)
 
 	defer func() {
