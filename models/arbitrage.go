@@ -28,26 +28,3 @@ type ArbitrageCH struct {
 	TraceIDs  []string `json:"trace_ids"`
 	Dexes     []string `json:"dexes"`
 }
-
-func SwapsToArbitrage(swap1, swap2 *SwapCH) *ArbitrageCH {
-	return &ArbitrageCH{
-		Sender:          swap1.Sender,
-		Time:            swap1.Time,
-		AmountIn:        swap1.AmountIn,
-		Jetton:          swap1.JettonIn,
-		JettonName:      swap1.JettonInName,
-		JettonSymbol:    swap1.JettonInSymbol,
-		JettonUsdRate:   swap1.JettonInUsdRate,
-		JettonDecimals:  swap1.JettonInDecimals,
-		AmountOut:       swap2.AmountOut,
-		AmountsPath:     []*big.Int{swap1.AmountIn, swap1.AmountOut, swap2.AmountOut},
-		JettonsPath:     []string{swap1.JettonIn, swap1.JettonOut, swap2.JettonOut},
-		JettonNames:     []string{swap1.JettonInName, swap1.JettonOutName, swap2.JettonOutName},
-		JettonSymbols:   []string{swap1.JettonInSymbol, swap1.JettonOutSymbol, swap2.JettonOutSymbol},
-		JettonUsdRates:  []float64{swap1.JettonInUsdRate, swap1.JettonOutUsdRate, swap2.JettonOutUsdRate},
-		JettonsDecimals: []uint64{swap1.JettonInDecimals, swap1.JettonOutDecimals, swap2.JettonOutDecimals},
-		PoolsPath:       []string{swap1.PoolAddress, swap2.PoolAddress},
-		TraceIDs:        []string{swap1.TraceID, swap2.TraceID},
-		Dexes:           []string{swap1.Dex, swap2.Dex},
-	}
-}

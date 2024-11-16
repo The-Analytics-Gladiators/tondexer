@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/tonkeeper/tonapi-go"
 	"log"
-	"math/big"
 	"os"
 	"time"
+	"tondexer/arbitrage"
 	"tondexer/core"
 	"tondexer/dedust"
 	"tondexer/jettons"
@@ -211,27 +209,7 @@ func main() {
 			processedChModels.Add(model)
 		}
 
-		all := processedChModels.Elements()
-
-		outMap := map[string]*models.SwapCH{}
-		for _, model := range all {
-			outMap[tokenAmountHash(model.JettonOut, model.AmountOut)] = model
-		}
-
-		var arbitrages []*models.ArbitrageCH
-		for _, secondSwap := range all {
-			firstSwap, exist := outMap[tokenAmountHash(secondSwap.JettonIn, secondSwap.AmountIn)]
-			if exist && secondSwap != firstSwap && firstSwap.JettonIn == secondSwap.JettonOut {
-				// amounts are most like equals because of the hashes matched
-				processedChModels.Remove(firstSwap)
-				processedChModels.Remove(secondSwap)
-
-				arbitrage := models.SwapsToArbitrage(firstSwap, secondSwap)
-				log.Printf("Arbitrage fucker detected! %v\n", arbitrage)
-				arbitrages = append(arbitrages, arbitrage)
-			}
-		}
-
+		arbitrages := arbitrage.FindArbitragesAndDeleteThemFromSetGeneric(processedChModels)
 		if len(arbitrages) > 0 {
 			if e := persistence.WriteArbitragesToClickhouse(&cfg, arbitrages); e != nil {
 				log.Printf("Warning: Unable to save arbitrages %v\n", e)
@@ -239,11 +217,4 @@ func main() {
 		}
 		processedChModels.Evict()
 	}
-}
-
-func tokenAmountHash(token string, amount *big.Int) string {
-	h := sha256.New()
-	h.Write([]byte(token))
-	h.Write([]byte(amount.String()))
-	return hex.EncodeToString(h.Sum(nil))
 }

@@ -261,3 +261,5 @@ func TestTraceIFForSwapInfo(t *testing.T) {
 
 // https://tonviewer.com/transaction/3bc93c9d4696ec75b1e44106f613215e4eaab00894f80bb6cd58ee5aba67b39a both dedust and stonfiv2 and arbitrage
 // https://tonviewer.com/transaction/bbea35f5402a7c99530eaa83ce13daa444ad8ebe47d60257e362848f9336ca91 - 3 swaps stonfi and dedust
+
+// 3-cycle, but slightly unmached by out-in: https://tonviewer.com/transaction/04fada65227c3fac0fd34ff731035fe2a2a498e1dcb06c53d6a98de8d1193e9c

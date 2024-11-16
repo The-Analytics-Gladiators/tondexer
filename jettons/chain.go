@@ -41,6 +41,14 @@ func GetTonApi() (*TonApi, error) {
 }
 
 func (tonApi *TonApi) MasterByWallet(wallet string) (*address.Address, error) {
+	backoff := retry.WithMaxRetries(5, retry.NewFibonacci(1*time.Second))
+	return retry.DoValue(context.Background(), backoff, func(ctx context.Context) (*address.Address, error) {
+		result, err := tonApi.masterByWalletInternal(wallet)
+		return result, retry.RetryableError(err)
+	})
+}
+
+func (tonApi *TonApi) masterByWalletInternal(wallet string) (*address.Address, error) {
 	wApi, err := GetTonApi()
 	if err != nil {
 		return nil, err
@@ -59,4 +67,13 @@ func (tonApi *TonApi) MasterByWallet(wallet string) (*address.Address, error) {
 	jettonMasterAddress := res.MustSlice(2).MustLoadAddr()
 
 	return jettonMasterAddress, nil
+}
+
+func Contract(address string) string {
+	// converting stonfi proxy ton v2 to v1
+	if address == "EQBnGWMCf3-FZZq1W4IWcWiGAc3PHuZ0_H-7sad2oY00o83S" {
+		return "EQCM3B12QK1e4yZSf8GtBRT0aLMNyEsBc_DhVfRRtOEffLez"
+	} else {
+		return address
+	}
 }
