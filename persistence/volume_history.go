@@ -15,7 +15,7 @@ type VolumeHistoryEntry struct {
 	Number          uint64    `json:"number" ch:"number"`
 }
 
-func VolumeHistorySqlQuery(config *core.Config, period models.Period) string {
+func VolumeHistorySqlQuery(config *core.Config, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT `,
@@ -25,6 +25,7 @@ SELECT `,
     count() AS number
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND `, dex.WhereStatement("dex"), `
 GROUP BY period
 ORDER BY period ASC WITH FILL STEP `, periodParams.ToInterval, `(1)`)
 }

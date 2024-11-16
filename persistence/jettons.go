@@ -16,7 +16,7 @@ type JettonVolume struct {
 	JettonUsd      float64  `json:"jetton_usd" ch:"jetton_usd"`
 }
 
-func TopJettonRequest(config *core.Config, period models.Period) string {
+func TopJettonRequest(config *core.Config, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 
 	return fmt.Sprint(`
@@ -31,16 +31,18 @@ FROM
 (
     SELECT
 		time,
+    	dex,
         jetton_in AS jetton_address,
         jetton_in_symbol AS jetton_symbol,
         jetton_in_name AS jetton_name,
     	jetton_in_decimals AS jetton_decimals,
         amount_in AS amount,
         `, UsdInField, ` AS jetton_usd
-    FROM swaps
+    FROM `, config.DbName, `.swaps
     UNION ALL
     SELECT
 		time,
+		dex,
         jetton_out AS jetton_address,
         jetton_out_symbol AS jetton_symbol,
         jetton_out_name AS jetton_name,
@@ -50,6 +52,7 @@ FROM
     FROM `, config.DbName, `.swaps
 )
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND `, dex.WhereStatement("dex"), `
 GROUP BY jetton_address
 ORDER BY jetton_usd DESC
 LIMIT 15

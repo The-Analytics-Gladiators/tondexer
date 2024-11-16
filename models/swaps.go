@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const StonfiV1 = "StonfiV1"
+const StonfiV2 = "StonfiV2"
+const DeDust = "DeDust"
+
 type SwapInfo struct {
 	TraceID      string //hash of first transaction
 	Notification *SwapTransferNotification

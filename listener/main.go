@@ -147,9 +147,9 @@ func main() {
 					alreadySeenHashes.Add(transaction.Hash)
 				}
 
-				stonfiV1Swaps := swapInfoWithDex(stonfi.ExtractStonfiSwapsFromRootTrace(trace), "StonfiV1")
-				stonfiV2Swaps := swapInfoWithDex(stonfiv2.ExtractStonfiV2SwapsFromRootTrace(trace), "StonfiV2")
-				dedustSwaps := swapInfoWithDex(dedust.ExtractDedustSwapsFromRootTrace(trace), "DeDust")
+				stonfiV1Swaps := swapInfoWithDex(stonfi.ExtractStonfiSwapsFromRootTrace(trace), models.StonfiV1)
+				stonfiV2Swaps := swapInfoWithDex(stonfiv2.ExtractStonfiV2SwapsFromRootTrace(trace), models.StonfiV2)
+				dedustSwaps := swapInfoWithDex(dedust.ExtractDedustSwapsFromRootTrace(trace), models.DeDust)
 
 				swaps := append(stonfiV1Swaps, append(stonfiV2Swaps, dedustSwaps...)...)
 

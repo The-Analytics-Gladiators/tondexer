@@ -15,8 +15,6 @@ import (
 	"tondexer/stonfiv2"
 )
 
-//a531ac5b5b44df7ee5acc11f514338f3ae12b3a60db5ebed51f008b891c7f918','8535c00aab48da6e2b926c2c26821aab259b69837426b1306cc2946a603ca659
-
 var client, _ = tonapi.New()
 
 var tonApiClient, _ = tonapi.New()

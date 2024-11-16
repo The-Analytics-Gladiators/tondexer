@@ -24,7 +24,7 @@ type PoolVolume struct {
 	AmountUsd         float64  `json:"amount_usd" ch:"amount_usd"`
 }
 
-func TopPoolsRequest(config *core.Config, period models.Period) string {
+func TopPoolsRequest(config *core.Config, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -44,6 +44,7 @@ SELECT
     amount_in_usd + amount_out_usd AS amount_usd
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND `, dex.WhereStatement("dex"), `
 GROUP BY pool_address
 ORDER BY amount_usd DESC
 LIMIT 15

@@ -73,20 +73,21 @@ type EnrichedSwapCH struct {
 	TraceID           string    `ch:"trace_id"`
 }
 
-func LatestSwapsSqlQuery(config *core.Config, limit uint64) string {
+func LatestSwapsSqlQuery(config *core.Config, limit uint64, dex models.Dex) string {
 	return fmt.Sprint(
 		enrichedSwapSelect, `
 FROM `, config.DbName, `.swaps
+WHERE `, dex.WhereStatement("dex"), `
 ORDER BY time DESC
 LIMIT `, limit)
 }
 
-func TopSwapsSqlQuery(config *core.Config, period models.Period) string {
+func TopSwapsSqlQuery(config *core.Config, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
-	return fmt.Sprint(enrichedSwapSelect,
-		`
+	return fmt.Sprint(enrichedSwapSelect, `
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND `, dex.WhereStatement("dex"), `
 ORDER BY (in_usd + out_usd) DESC
 LIMIT 15
 `)

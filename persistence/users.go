@@ -14,7 +14,7 @@ type UserVolume struct {
 	Count       uint64   `json:"count" ch:"count"`
 }
 
-func TopReferrersRequest(config *core.Config, period models.Period) string {
+func TopReferrersRequest(config *core.Config, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -25,13 +25,14 @@ SELECT
     count() AS count
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND `, dex.WhereStatement("dex"), `
 GROUP BY sender
 ORDER BY amount_usd DESC
 LIMIT 15
 `)
 }
 
-func TopUsersRequest(config *core.Config, period models.Period) string {
+func TopUsersRequest(config *core.Config, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -42,6 +43,7 @@ SELECT
     count() AS count
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND `, dex.WhereStatement("dex"), `
 GROUP BY sender
 ORDER BY amount_usd DESC
 LIMIT 15

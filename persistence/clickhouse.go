@@ -138,7 +138,7 @@ type SummaryStats struct {
 	UniqueUsers  uint64 `ch:"unique_users" json:"unique_users"`
 }
 
-func ReadSummaryStats(config *core.Config, period models.Period) (*SummaryStats, error) {
+func ReadSummaryStats(config *core.Config, period models.Period, dex models.Dex) (*SummaryStats, error) {
 	conn, err := connection(config)
 	if err != nil {
 		return nil, err
@@ -154,8 +154,10 @@ SELECT
     length(groupUniqArrayArray([jetton_in, jetton_out])) AS unique_tokens,
     uniq(sender) AS unique_users
 FROM %v.swaps
-WHERE time >= %v(subtractDays(now(), %v))`, UsdInField, UsdOutField,
-		config.DbName, periodParams.ToStartOf, periodParams.WindowInDays))
+WHERE time >= %v(subtractDays(now(), %v))
+AND %v`, UsdInField, UsdOutField,
+		config.DbName, periodParams.ToStartOf, periodParams.WindowInDays,
+		dex.WhereStatement("dex")))
 
 	var stats SummaryStats
 	err = row.ScanStruct(&stats)
@@ -237,9 +239,7 @@ func ReadArrayFromClickhouse[T any](config *core.Config, query string) ([]T, err
 	if err != nil {
 		return nil, err
 	}
-
 	defer conn.Close()
-	println(query)
 	rows, err := conn.Query(context.Background(), query)
 
 	defer func() {

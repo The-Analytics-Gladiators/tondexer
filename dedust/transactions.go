@@ -37,7 +37,7 @@ func ExtractDedustSwapsFromRootTrace(root *tonapi.Trace) []*models.SwapInfo {
 	infos := core.Map(findSwapTraces(root), func(t *DedustSwapTraces) *models.SwapInfo {
 		info, e := swapInfoFromDedustTraces(t)
 		if e != nil {
-			log.Printf("Error extracting Dedust Swap Info from %v: %v", t.InVaultTrace.Transaction.Hash, e)
+			log.Printf("Error extracting dedust Swap Info from %v: %v", t.InVaultTrace.Transaction.Hash, e)
 			return nil
 		}
 		return info
