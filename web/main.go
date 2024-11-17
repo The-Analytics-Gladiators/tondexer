@@ -15,10 +15,6 @@ type DexPeriodRequest struct {
 	Dex    string `form:"dex" binding:"omitempty,oneof=all stonfi dedust"`
 }
 
-type PeriodRequest struct {
-	Period string `form:"period" binding:"required,oneof=day week month"`
-}
-
 func main() {
 	var cfg core.Config
 
@@ -31,35 +27,35 @@ func main() {
 		return persistence.SwapsSummarySql(cfg, period, dex)
 	}))
 	route.GET("/api/swaps/latest", latestSwaps(&cfg))
-	route.GET("/api/volumeHistory", periodDexArrayRequest(&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.VolumeHistoryEntry, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.VolumeHistoryEntry](config, persistence.VolumeHistorySqlQuery(config, period, dex))
+	route.GET("/api/volumeHistory", periodDexArrayRequestNew[persistence.VolumeHistoryEntry](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.VolumeHistorySqlQuery(config, period, dex)
 	}))
-	route.GET("/api/swaps/top", periodDexArrayRequest(&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.EnrichedSwapCH, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.EnrichedSwapCH](config, persistence.TopSwapsSqlQuery(config, period, dex))
+	route.GET("/api/swaps/top", periodDexArrayRequestNew[persistence.EnrichedSwapCH](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopSwapsSqlQuery(config, period, dex)
 	}))
-	route.GET("/api/pools/top", periodDexArrayRequest[persistence.PoolVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.PoolVolume, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.PoolVolume](&cfg, persistence.TopPoolsRequest(config, period, dex))
+	route.GET("/api/pools/top", periodDexArrayRequestNew[persistence.PoolVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopPoolsRequest(config, period, dex)
 	}))
-	route.GET("api/jettons/top", periodDexArrayRequest[persistence.JettonVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.JettonVolume, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.JettonVolume](&cfg, persistence.TopJettonRequest(config, period, dex))
+	route.GET("api/jettons/top", periodDexArrayRequestNew[persistence.JettonVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopJettonRequest(config, period, dex)
 	}))
-	route.GET("/api/users/top", periodDexArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.UserVolume, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopUsersRequest(config, period, dex))
+	route.GET("/api/users/top", periodDexArrayRequestNew[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopUsersRequest(config, period, dex)
 	}))
-	route.GET("/api/referrers/top", periodDexArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.UserVolume, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopReferrersRequest(config, period, dex))
+	route.GET("/api/referrers/top", periodDexArrayRequestNew[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopReferrersRequest(config, period, dex)
 	}))
-	route.GET("/api/profiters/top", periodDexArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) ([]persistence.UserVolume, error) {
+	route.GET("/api/profiters/top", periodDexArrayRequestNew[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		//Deprecated
-		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopUsersProfiters(config, period))
+		return persistence.TopUsersProfiters(config, period)
 	}))
 	route.GET("/api/swaps/distribution", oneRowPeriodDexRequest[persistence.SwapDistribution](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.SwapsDistributionSqlQuery(cfg, period, dex)
 	}))
 
 	route.GET("/api/arbitrages/latest", latestArbitrages(&cfg))
-	route.GET("/api/arbitrages/volumeHistory", periodDexArrayRequest(&cfg, func(config *core.Config, period models.Period, _ models.Dex) ([]persistence.ArbitrageHistoryEntry, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.ArbitrageHistoryEntry](config, persistence.ArbitrageHistorySqlQuery(config, period))
+	route.GET("/api/arbitrages/volumeHistory", periodDexArrayRequestNew[persistence.ArbitrageHistoryEntry](&cfg, func(config *core.Config, period models.Period, _ models.Dex) string {
+		return persistence.ArbitrageHistorySqlQuery(config, period)
 	}))
 	route.GET("/api/arbitrages/distribution", oneRowPeriodDexRequest[persistence.ArbitrageDistribution](&cfg, func(cfg *core.Config, period models.Period, _ models.Dex) string {
 		return persistence.ArbitrageDistributionSqlQuery(cfg, period)
@@ -81,7 +77,7 @@ func periodAndDexFromRequest(request DexPeriodRequest) (models.Period, models.De
 	return period, dex, nil
 }
 
-func periodDexArrayRequest[T any](cfg *core.Config, fetchEntitiesFunc func(config *core.Config, period models.Period, dex models.Dex) ([]T, error)) func(c *gin.Context) {
+func periodDexArrayRequestNew[T any](cfg *core.Config, sqlFunc func(cfg *core.Config, period models.Period, dex models.Dex) string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var request DexPeriodRequest
 		if err := c.ShouldBindQuery(&request); err != nil {
@@ -95,7 +91,7 @@ func periodDexArrayRequest[T any](cfg *core.Config, fetchEntitiesFunc func(confi
 			c.JSON(400, gin.H{"msg": e.Error()})
 		}
 
-		entities, e := fetchEntitiesFunc(cfg, period, dex)
+		entities, e := persistence.ReadArrayFromClickhouse[T](cfg, sqlFunc(cfg, period, dex))
 		if e != nil {
 			log.Printf("Error queryin entities: %v\n", e)
 			c.JSON(500, gin.H{"msg": e.Error()})
