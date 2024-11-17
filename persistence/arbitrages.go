@@ -90,3 +90,35 @@ FROM `, config.DbName, `.arbitrages
 ORDER BY time DESC
 LIMIT `, limit)
 }
+
+type ArbitrageDistribution struct {
+	Usd_5         uint64 `ch:"usd_5" json:"usd_1"`
+	Usd_5_20      uint64 `ch:"usd_5_20" json:"usd_5_20"`
+	Usd_20_50     uint64 `ch:"usd_20_50" json:"usd_20_50"`
+	Usd_50_200    uint64 `ch:"usd_50_200" json:"usd_50_200"`
+	Usd_200_500   uint64 `ch:"usd_200_500" json:"usd_200_500"`
+	Usd_500_1000  uint64 `ch:"usd_500_1000" json:"usd_500_1000"`
+	Usd_1000_5000 uint64 `ch:"usd_1000_5000" json:"usd_1000_5000"`
+	Usd_5000      uint64 `ch:"usd_5000" json:"usd_5000"`
+}
+
+func ArbitrageDistributionSqlQuery(config *core.Config, period models.Period) string {
+	periodParams := models.PeriodParamsMap[period]
+	return fmt.Sprint(`
+SELECT
+    countIf((usd >= 0) AND (usd <= 0.05)) AS usd_5,
+    countIf((usd > 0.05) AND (usd <= 0.2)) AS usd_5_20,
+    countIf((usd > 0.2) AND (usd < 0.5)) AS usd_20_50,
+    countIf((usd >= 0.5) AND (usd < 2)) AS usd_50_200,
+    countIf((usd >= 2) AND (usd < 5)) AS usd_200_500,
+    countIf((usd >= 5) AND (usd < 10)) AS usd_500_1000,
+    countIf((usd >= 10) AND (usd < 50)) AS usd_1000_5000,
+    countIf(usd >= 50) AS usd_5000
+FROM
+(
+    SELECT
+        ((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate AS usd
+	FROM `, config.DbName, `.arbitrages
+    WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+)`)
+}

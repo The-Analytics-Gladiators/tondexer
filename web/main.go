@@ -53,12 +53,16 @@ func main() {
 		//Deprecated
 		return persistence.ReadArrayFromClickhouse[persistence.UserVolume](&cfg, persistence.TopUsersProfiters(config, period))
 	}))
-	route.GET("/api/arbitrages/volumeHistory", periodArrayRequest(&cfg, func(config *core.Config, period models.Period) ([]persistence.ArbitrageHistoryEntry, error) {
-		return persistence.ReadArrayFromClickhouse[persistence.ArbitrageHistoryEntry](config, persistence.ArbitrageHistorySqlQuery(config, period))
-	}))
-	route.GET("/api/arbitrages/latest", latestArbitrages(&cfg))
 	route.GET("/api/swaps/distribution", oneRowPeriodDexRequest[persistence.SwapDistribution](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.SwapsDistributionSqlQuery(cfg, period, dex)
+	}))
+
+	route.GET("/api/arbitrages/latest", latestArbitrages(&cfg))
+	route.GET("/api/arbitrages/volumeHistory", periodDexArrayRequest(&cfg, func(config *core.Config, period models.Period, _ models.Dex) ([]persistence.ArbitrageHistoryEntry, error) {
+		return persistence.ReadArrayFromClickhouse[persistence.ArbitrageHistoryEntry](config, persistence.ArbitrageHistorySqlQuery(config, period))
+	}))
+	route.GET("/api/arbitrages/distribution", oneRowPeriodDexRequest[persistence.ArbitrageDistribution](&cfg, func(cfg *core.Config, period models.Period, _ models.Dex) string {
+		return persistence.ArbitrageDistributionSqlQuery(cfg, period)
 	}))
 
 	route.Run(":8088")
@@ -92,30 +96,6 @@ func periodDexArrayRequest[T any](cfg *core.Config, fetchEntitiesFunc func(confi
 		}
 
 		entities, e := fetchEntitiesFunc(cfg, period, dex)
-		if e != nil {
-			log.Printf("Error queryin entities: %v\n", e)
-			c.JSON(500, gin.H{"msg": e.Error()})
-		}
-
-		c.JSON(200, entities)
-	}
-}
-
-func periodArrayRequest[T any](cfg *core.Config, fetchEntitiesFunc func(config *core.Config, period models.Period) ([]T, error)) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		var request PeriodRequest
-		if err := c.ShouldBindQuery(&request); err != nil {
-			log.Printf("Error binding request %v\n", err)
-			c.JSON(400, gin.H{"msg": err.Error()})
-			return
-		}
-		period, e := models.ParsePeriod(request.Period)
-		if e != nil {
-			log.Printf("Invalid period: %v\n", request.Period)
-			c.JSON(400, gin.H{"msg": e.Error()})
-		}
-
-		entities, e := fetchEntitiesFunc(cfg, period)
 		if e != nil {
 			log.Printf("Error queryin entities: %v\n", e)
 			c.JSON(500, gin.H{"msg": e.Error()})

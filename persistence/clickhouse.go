@@ -143,7 +143,6 @@ func ReadSingleRow[T any](config *core.Config, sql string) (*T, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	defer conn.Close()
 	row := conn.QueryRow(context.Background(), sql)
 
