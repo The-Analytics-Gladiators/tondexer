@@ -59,9 +59,7 @@ type EnrichedArbitrageCH struct {
 	Dexes            []string   `json:"dexes" ch:"dexes"`
 }
 
-func LatestArbitragesSqlQuery(config *core.Config, limit uint64) string {
-	return fmt.Sprint(`
-SELECT
+const arbitrageSelectFields = `SELECT
     time,
     sender,
     arrayDistinct(trace_ids) AS traces,
@@ -85,10 +83,21 @@ SELECT
     arrayMap(i -> (toFloat64(amounts_path[i]) / pow(10, jettons_decimals[i])), range(1, length(amounts_path) + 1)) AS amounts_jettons,
     arrayMap(i -> ((amounts_jettons[i]) * (jetton_usd_rates[i])), range(1, length(amounts_path) + 1)) AS amounts_usd_path,
     pools_path,
-    dexes
+    dexes`
+
+func LatestArbitragesSqlQuery(config *core.Config, limit uint64) string {
+	return fmt.Sprint(arbitrageSelectFields, `
 FROM `, config.DbName, `.arbitrages
 ORDER BY time DESC
 LIMIT `, limit)
+}
+
+func TopArbitragesSqlQuery(config *core.Config, period models.Period) string {
+	periodParams := models.PeriodParamsMap[period]
+	return fmt.Sprint(arbitrageSelectFields, `
+FROM `, config.DbName, `.arbitrages
+    WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+`)
 }
 
 type ArbitrageDistribution struct {
@@ -121,4 +130,55 @@ FROM
 	FROM `, config.DbName, `.arbitrages
     WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 )`)
+}
+
+type TopArbitrageUser struct {
+	Sender     string   `ch:"sender" json:"sender"`
+	ProfitUsd  float64  `ch:"profit_usd" json:"profit_usd"`
+	TopJettons []string `ch:"top_jettons" json:"top_jettons"`
+	Number     uint64   `ch:"number" json:"number"`
+}
+
+func TopArbitrageUsersSql(config *core.Config, period models.Period) string {
+	periodParams := models.PeriodParamsMap[period]
+	return fmt.Sprint(`
+SELECT
+    sender,
+    sum(((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate) AS profit_usd,
+    topK(5)(jetton_symbol) as top_jettons,
+    count() AS number
+FROM `, config.DbName, `.arbitrages
+WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+GROUP BY sender
+ORDER BY profit_usd DESC
+LIMIT 15
+`)
+}
+
+type TopArbitrageJetton struct {
+	Jetton         string  `ch:"jetton" json:"jetton"`
+	JettonSymbol   string  `ch:"jetton_symbol" json:"jetton_symbol"`
+	JettonName     string  `ch:"jetton_name" json:"jetton_name"`
+	JettonDecimals uint64  `ch:"jetton_decimals_tmp" json:"jetton_decimals"`
+	ProfitUsd      float64 `ch:"profit_usd" json:"profit_usd"`
+	Number         uint64  `ch:"number" json:"number"`
+}
+
+func TopArbitrageJettonsSql(config *core.Config, period models.Period) string {
+	periodParams := models.PeriodParamsMap[period]
+	return fmt.Sprint(`
+SELECT
+    jetton,
+    anyHeavy(jetton_symbol) AS jetton_symbol,
+	anyHeavy(jetton_name) AS jetton_name,
+    anyHeavy(jetton_decimals) AS jetton_decimals_tmp,
+    sum(((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate AS usd) AS profit_usd,
+    count() AS number
+FROM `, config.DbName, `.arbitrages
+WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+GROUP BY jetton
+HAVING number > 1
+ORDER BY profit_usd DESC
+LIMIT 15
+`)
 }

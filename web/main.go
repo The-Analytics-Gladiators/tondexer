@@ -27,25 +27,25 @@ func main() {
 		return persistence.SwapsSummarySql(cfg, period, dex)
 	}))
 	route.GET("/api/swaps/latest", latestSwaps(&cfg))
-	route.GET("/api/volumeHistory", periodDexArrayRequestNew[persistence.VolumeHistoryEntry](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("/api/volumeHistory", periodDexArrayRequest[persistence.VolumeHistoryEntry](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.VolumeHistorySqlQuery(config, period, dex)
 	}))
-	route.GET("/api/swaps/top", periodDexArrayRequestNew[persistence.EnrichedSwapCH](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("/api/swaps/top", periodDexArrayRequest[persistence.EnrichedSwapCH](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.TopSwapsSqlQuery(config, period, dex)
 	}))
-	route.GET("/api/pools/top", periodDexArrayRequestNew[persistence.PoolVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("/api/pools/top", periodDexArrayRequest[persistence.PoolVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.TopPoolsRequest(config, period, dex)
 	}))
-	route.GET("api/jettons/top", periodDexArrayRequestNew[persistence.JettonVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("api/jettons/top", periodDexArrayRequest[persistence.JettonVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.TopJettonRequest(config, period, dex)
 	}))
-	route.GET("/api/users/top", periodDexArrayRequestNew[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("/api/users/top", periodDexArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.TopUsersRequest(config, period, dex)
 	}))
-	route.GET("/api/referrers/top", periodDexArrayRequestNew[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("/api/referrers/top", periodDexArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		return persistence.TopReferrersRequest(config, period, dex)
 	}))
-	route.GET("/api/profiters/top", periodDexArrayRequestNew[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+	route.GET("/api/profiters/top", periodDexArrayRequest[persistence.UserVolume](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
 		//Deprecated
 		return persistence.TopUsersProfiters(config, period)
 	}))
@@ -54,11 +54,20 @@ func main() {
 	}))
 
 	route.GET("/api/arbitrages/latest", latestArbitrages(&cfg))
-	route.GET("/api/arbitrages/volumeHistory", periodDexArrayRequestNew[persistence.ArbitrageHistoryEntry](&cfg, func(config *core.Config, period models.Period, _ models.Dex) string {
+	route.GET("/api/arbitrages/top", periodDexArrayRequest[persistence.EnrichedArbitrageCH](&cfg, func(config *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopArbitragesSqlQuery(config, period)
+	}))
+	route.GET("/api/arbitrages/volumeHistory", periodDexArrayRequest[persistence.ArbitrageHistoryEntry](&cfg, func(config *core.Config, period models.Period, _ models.Dex) string {
 		return persistence.ArbitrageHistorySqlQuery(config, period)
 	}))
 	route.GET("/api/arbitrages/distribution", oneRowPeriodDexRequest[persistence.ArbitrageDistribution](&cfg, func(cfg *core.Config, period models.Period, _ models.Dex) string {
 		return persistence.ArbitrageDistributionSqlQuery(cfg, period)
+	}))
+	route.GET("/api/arbitrages/users/top", periodDexArrayRequest[persistence.TopArbitrageUser](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopArbitrageUsersSql(cfg, period)
+	}))
+	route.GET("/api/arbitrages/jettons/top", periodDexArrayRequest[persistence.TopArbitrageJetton](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
+		return persistence.TopArbitrageJettonsSql(cfg, period)
 	}))
 
 	route.Run(":8088")
@@ -77,7 +86,7 @@ func periodAndDexFromRequest(request DexPeriodRequest) (models.Period, models.De
 	return period, dex, nil
 }
 
-func periodDexArrayRequestNew[T any](cfg *core.Config, sqlFunc func(cfg *core.Config, period models.Period, dex models.Dex) string) func(c *gin.Context) {
+func periodDexArrayRequest[T any](cfg *core.Config, sqlFunc func(cfg *core.Config, period models.Period, dex models.Dex) string) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var request DexPeriodRequest
 		if err := c.ShouldBindQuery(&request); err != nil {
