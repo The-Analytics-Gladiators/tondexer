@@ -22,6 +22,7 @@ type PoolVolume struct {
 	JettonOutSymbol   string   `json:"jetton_out_symbol" ch:"jetton_out_symbol"`
 	JettonOutDecimals uint64   `json:"jetton_out_decimals" ch:"out_jetton_decimals"`
 	AmountUsd         float64  `json:"amount_usd" ch:"amount_usd"`
+	Dex               string   `json:"dex" ch:"pool_dex"`
 }
 
 func TopPoolsRequest(config *core.Config, period models.Period, dex models.Dex) string {
@@ -29,19 +30,20 @@ func TopPoolsRequest(config *core.Config, period models.Period, dex models.Dex) 
 	return fmt.Sprint(`
 SELECT
     pool_address,
-    any(jetton_in) AS jetton_in,
+    anyHeavy(jetton_in) AS jetton_in,
     sum(amount_in) AS in_amount,
     sum(`, UsdInField, `) AS amount_in_usd,
-    any(jetton_in_name) AS jetton_in_name,
-    any(jetton_in_symbol) AS jetton_in_symbol,
-    any(jetton_in_decimals) AS in_jetton_decimals,
-    any(jetton_out) AS jetton_out,
+    anyHeavy(jetton_in_name) AS jetton_in_name,
+    anyHeavy(jetton_in_symbol) AS jetton_in_symbol,
+    anyHeavy(jetton_in_decimals) AS in_jetton_decimals,
+    anyHeavy(jetton_out) AS jetton_out,
     sum(amount_out) AS out_amount,
     sum(`, UsdOutField, `) AS amount_out_usd,
-    any(jetton_out_name) AS jetton_out_name,
-    any(jetton_out_symbol) AS jetton_out_symbol,
-    any(jetton_out_decimals) AS out_jetton_decimals,
-    amount_in_usd + amount_out_usd AS amount_usd
+    anyHeavy(jetton_out_name) AS jetton_out_name,
+    anyHeavy(jetton_out_symbol) AS jetton_out_symbol,
+    anyHeavy(jetton_out_decimals) AS out_jetton_decimals,
+    (amount_in_usd + amount_out_usd) / 2 AS amount_usd,
+	anyHeavy(dex) as pool_dex
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND `, dex.WhereStatement("dex"), `

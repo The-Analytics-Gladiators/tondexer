@@ -37,7 +37,7 @@ func TopUsersRequest(config *core.Config, period models.Period, dex models.Dex) 
 	return fmt.Sprint(`
 SELECT
     sender,
-    sum(`, UsdInField, ` + `, UsdOutField, `) AS amount_usd,
+    sum((`, UsdInField, ` + `, UsdOutField, `) / 2) AS amount_usd,
     uniqArray([jetton_in, jetton_out]) AS tokens,
 	topK(5)(jetton_in_symbol) AS top_tokens,
     count() AS count
