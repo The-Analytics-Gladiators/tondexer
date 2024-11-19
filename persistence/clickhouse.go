@@ -91,6 +91,7 @@ func WriteArbitragesToClickhouse(config *core.Config, arbitrages []*models.Arbit
 			model.PoolsPath,
 			model.TraceIDs,
 			model.Dexes,
+			model.Senders,
 		)
 	})
 }

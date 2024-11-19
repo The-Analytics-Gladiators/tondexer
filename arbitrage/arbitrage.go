@@ -98,5 +98,6 @@ func SwapsToArbitrage(swaps []*models.SwapCH) *models.ArbitrageCH {
 		PoolsPath:       core.Map(swaps, func(swap *models.SwapCH) string { return swap.PoolAddress }),
 		TraceIDs:        core.Map(swaps, func(swap *models.SwapCH) string { return swap.TraceID }),
 		Dexes:           core.Map(swaps, func(swap *models.SwapCH) string { return swap.Dex }),
+		Senders:         core.Map(swaps, func(swap *models.SwapCH) string { return swap.Sender }),
 	}
 }

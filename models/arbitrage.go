@@ -27,4 +27,5 @@ type ArbitrageCH struct {
 	PoolsPath []string `json:"pools_path"`
 	TraceIDs  []string `json:"trace_ids"`
 	Dexes     []string `json:"dexes"`
+	Senders   []string `json:"senders"`
 }

@@ -112,5 +112,7 @@ func TestThreeCycle(t *testing.T) {
 		"600bcbbca9c84ab81306c85e4ae3c67ff2b593435ed974da5b0e3dcbe22b9f52",
 		"600bcbbca9c84ab81306c85e4ae3c67ff2b593435ed974da5b0e3dcbe22b9f52"}, arbitrage.TraceIDs)
 	assert.Equal(t, []string{"StonfiV1", "DeDust", "StonfiV2"}, arbitrage.Dexes)
+	assert.Equal(t, []string{"EQA6UVoybsI7mFQQaqMLMVmQovCGBGx0rOUuyf2Q2GfGmvCN", "EQA6UVoybsI7mFQQaqMLMVmQovCGBGx0rOUuyf2Q2GfGmvCN", "EQA6UVoybsI7mFQQaqMLMVmQovCGBGx0rOUuyf2Q2GfGmvCN"},
+		arbitrage.Senders)
 
 }
