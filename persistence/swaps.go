@@ -42,7 +42,8 @@ SELECT
 	referral_address,
 	referral_amount,
 	floor(`, UsdReferralField, `, 2) AS referral_usd,
-	trace_id
+	trace_id,
+	pool_address
 `)
 
 type EnrichedSwapCH struct {
@@ -71,6 +72,7 @@ type EnrichedSwapCH struct {
 	ReferralAmount    *big.Int  `ch:"referral_amount"`
 	ReferralUsd       float64   `ch:"referral_usd"`
 	TraceID           string    `ch:"trace_id"`
+	PoolAddress       string    `ch:"pool_address"`
 }
 
 func LatestSwapsSqlQuery(config *core.Config, limit uint64, dex models.Dex) string {
