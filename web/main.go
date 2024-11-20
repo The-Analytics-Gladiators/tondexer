@@ -21,6 +21,7 @@ func main() {
 	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
 		panic(err)
 	}
+
 	route := gin.Default()
 
 	route.GET("/api/summary", oneRowPeriodDexRequest[persistence.SummaryStats](&cfg, func(cfg *core.Config, period models.Period, dex models.Dex) string {
