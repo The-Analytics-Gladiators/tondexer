@@ -179,9 +179,10 @@ SELECT
     count() AS number
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND profit_usd > 0
 GROUP BY jetton
 HAVING number > 1
 ORDER BY profit_usd DESC
-LIMIT 15
+LIMIT 5
 `)
 }
