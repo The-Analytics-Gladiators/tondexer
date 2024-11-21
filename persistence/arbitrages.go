@@ -136,10 +136,10 @@ FROM
 }
 
 type TopArbitrageUser struct {
-	Sender     string   `ch:"sender" json:"sender"`
-	ProfitUsd  float64  `ch:"profit_usd" json:"profit_usd"`
-	TopJettons []string `ch:"top_jettons" json:"top_jettons"`
-	Number     uint64   `ch:"number" json:"number"`
+	Sender    string  `ch:"sender" json:"sender"`
+	ProfitUsd float64 `ch:"profit_usd" json:"profit_usd"`
+	Jettons   uint64  `ch:"jettons" json:"jettons"`
+	Number    uint64  `ch:"number" json:"number"`
 }
 
 func TopArbitrageUsersSql(config *core.Config, period models.Period) string {
@@ -148,13 +148,13 @@ func TopArbitrageUsersSql(config *core.Config, period models.Period) string {
 SELECT
     sender,
     sum(((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate) AS profit_usd,
-    topK(5)(jetton_symbol) as top_jettons,
+    uniq(jetton_symbol) as jettons,
     count() AS number
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 GROUP BY sender
 ORDER BY profit_usd DESC
-LIMIT 15
+LIMIT 10
 `)
 }
 
