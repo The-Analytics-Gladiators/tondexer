@@ -62,7 +62,7 @@ type EnrichedArbitrageCH struct {
 const arbitrageSelectFields = `SELECT
     time,
     sender,
-    arrayDistinct(trace_ids) AS traces,
+    trace_ids AS traces,
     amount_in,
     toFloat64(amount_in) / pow(10, jetton_decimals) AS amount_in_jettons,
     amount_out,
@@ -88,6 +88,7 @@ const arbitrageSelectFields = `SELECT
 func LatestArbitragesSqlQuery(config *core.Config, limit uint64) string {
 	return fmt.Sprint(arbitrageSelectFields, `
 FROM `, config.DbName, `.arbitrages
+WHERE length(arrayDistinct(senders)) = 1
 ORDER BY time DESC
 LIMIT `, limit)
 }
@@ -98,6 +99,7 @@ func TopArbitragesSqlQuery(config *core.Config, period models.Period) string {
 FROM `, config.DbName, `.arbitrages
     WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 	AND amount_out_usd - amount_in_usd > 0
+	AND length(arrayDistinct(senders)) = 1
 	ORDER BY amount_out_usd - amount_in_usd desc
 	LIMIT 15
 `)
@@ -171,8 +173,8 @@ func TopArbitrageJettonsSql(config *core.Config, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
-    jetton,
-    anyHeavy(jetton_symbol) AS jetton_symbol,
+    anyHeavy(jetton) as jetton,
+    jetton_symbol,
 	anyHeavy(jetton_name) AS jetton_name,
     anyHeavy(jetton_decimals) AS jetton_decimals_tmp,
     sum(((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate AS usd) AS profit_usd,
@@ -180,7 +182,7 @@ SELECT
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND usd > 0
-GROUP BY jetton
+GROUP BY jetton_symbol
 HAVING number > 1
 ORDER BY profit_usd DESC
 LIMIT 5

@@ -25,7 +25,7 @@ SELECT `,
     count() AS number
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
-AND `, dex.WhereStatement("dex"), `
+AND `, dex.WhereStatement("dex"), ` AND `, UsdInField, ` < 1000000 and `, UsdOutField, ` < 1000000
 GROUP BY period
 ORDER BY period ASC WITH FILL STEP `, periodParams.ToInterval, `(1)`)
 }

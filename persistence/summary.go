@@ -16,7 +16,9 @@ SELECT
     uniq(sender) AS unique_users
 FROM %v.swaps
 WHERE time >= %v(subtractDays(now(), %v))
-AND %v`, UsdInField, UsdOutField,
+AND %v
+AND %v < 1000000 AND %v < 1000000`, UsdInField, UsdOutField,
 		config.DbName, periodParams.ToStartOf, periodParams.WindowInDays,
-		dex.WhereStatement("dex"))
+		dex.WhereStatement("dex"),
+		UsdInField, UsdOutField)
 }

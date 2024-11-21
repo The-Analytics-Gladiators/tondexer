@@ -21,12 +21,12 @@ func TopJettonRequest(config *core.Config, period models.Period, dex models.Dex)
 
 	return fmt.Sprint(`
 SELECT
-    jetton_address,
-    any(jetton_symbol) AS jetton_symbol,
+    any(jetton_address) AS jetton_address,
+    jetton_symbol,
     any(jetton_name) AS jetton_name,
     any(jetton_decimals) AS jetton_decimals,
     sum(amount) AS jetton_amount,
-    sum(jetton_usd) AS jetton_usd
+    sum(jetton_usd_inner) AS jetton_usd
 FROM
 (
     SELECT
@@ -37,7 +37,7 @@ FROM
         jetton_in_name AS jetton_name,
     	jetton_in_decimals AS jetton_decimals,
         amount_in AS amount,
-        `, UsdInField, ` AS jetton_usd
+        `, UsdInField, ` AS jetton_usd_inner
     FROM `, config.DbName, `.swaps
     UNION ALL
     SELECT
@@ -48,13 +48,13 @@ FROM
         jetton_out_name AS jetton_name,
 		jetton_out_decimals AS jetton_decimals,
         amount_out AS amount,
-        `, UsdOutField, ` AS jetton_usd
+        `, UsdOutField, ` AS jetton_usd_inner
     FROM `, config.DbName, `.swaps
 )
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
-AND `, dex.WhereStatement("dex"), `
-GROUP BY jetton_address
+AND `, dex.WhereStatement("dex"), ` AND jetton_usd_inner < 1000000
+GROUP BY jetton_symbol
 ORDER BY jetton_usd DESC
-LIMIT 15
+LIMIT 10
 `)
 }

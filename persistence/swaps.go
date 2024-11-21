@@ -80,6 +80,7 @@ func LatestSwapsSqlQuery(config *core.Config, limit uint64, dex models.Dex) stri
 		enrichedSwapSelect, `
 FROM `, config.DbName, `.swaps
 WHERE `, dex.WhereStatement("dex"), `
+AND out_usd < 1000000 AND in_usd < 1000000
 ORDER BY time DESC
 LIMIT `, limit)
 }
@@ -90,7 +91,7 @@ func TopSwapsSqlQuery(config *core.Config, period models.Period, dex models.Dex)
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND `, dex.WhereStatement("dex"), `
-AND in_usd != 0 AND out_usd != 0
+AND in_usd != 0 AND out_usd != 0 AND out_usd < 1000000 AND in_usd < 1000000
 ORDER BY (in_usd + out_usd) DESC
 LIMIT 15
 `)
@@ -125,7 +126,7 @@ FROM
         (`, UsdInField, ` + `, UsdOutField, `) / 2 AS usd
 	FROM `, config.DbName, `.swaps
 	WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
-	AND `, dex.WhereStatement("dex"), `
+	AND `, dex.WhereStatement("dex"), ` AND usd < 1000000
 )
 `)
 }

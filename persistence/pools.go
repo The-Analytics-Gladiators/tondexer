@@ -47,6 +47,7 @@ SELECT
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND `, dex.WhereStatement("dex"), `
+AND `, UsdInField, ` < 1000000 AND `, UsdOutField, ` < 1000000
 GROUP BY pool_address
 ORDER BY amount_usd DESC
 LIMIT 15
