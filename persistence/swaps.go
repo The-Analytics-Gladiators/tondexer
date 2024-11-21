@@ -90,6 +90,7 @@ func TopSwapsSqlQuery(config *core.Config, period models.Period, dex models.Dex)
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND `, dex.WhereStatement("dex"), `
+AND in_usd != 0 AND out_usd != 0
 ORDER BY (in_usd + out_usd) DESC
 LIMIT 15
 `)

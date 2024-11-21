@@ -23,7 +23,6 @@ SELECT
     count() AS count
 FROM `, config.DbName, `.swaps
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
-AND `, dex.WhereStatement("dex"), `
 GROUP BY sender
 ORDER BY amount_usd DESC
 LIMIT 15

@@ -97,6 +97,7 @@ func TopArbitragesSqlQuery(config *core.Config, period models.Period) string {
 	return fmt.Sprint(arbitrageSelectFields, `
 FROM `, config.DbName, `.arbitrages
     WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+	LIMIT 15
 `)
 }
 
