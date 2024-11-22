@@ -27,6 +27,7 @@ SELECT `,
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND usd_diff > 0
+AND length(arrayDistinct(senders)) = 1
 GROUP BY period
 ORDER BY period ASC WITH FILL STEP `, periodParams.ToInterval, `(1)`,
 	)
@@ -59,7 +60,8 @@ type EnrichedArbitrageCH struct {
 	Dexes            []string   `json:"dexes" ch:"dexes"`
 }
 
-const arbitrageSelectFields = `SELECT
+func arbitrageSelectFields() string {
+	return fmt.Sprint(`SELECT
     time,
     sender,
     trace_ids AS traces,
@@ -70,23 +72,24 @@ const arbitrageSelectFields = `SELECT
     amount_in_jettons * jetton_usd_rate AS amount_in_usd,
     amount_out_jettons * jetton_usd_rate AS amount_out_usd,
     jetton,
-    jetton_symbol,
+    `, Symbol("jetton_symbol"), ` AS jetton_symbol,
     jetton_name,
     jetton_usd_rate,
     jetton_decimals,
     amounts_path,
     jettons_path,
     jetton_names,
-    jetton_symbols,
+	arrayMap(x -> `, Symbol("x"), `, jetton_symbols) AS jetton_symbols,
     jetton_usd_rates,
     jettons_decimals,
     arrayMap(i -> (toFloat64(amounts_path[i]) / pow(10, jettons_decimals[i])), range(1, length(amounts_path) + 1)) AS amounts_jettons,
     arrayMap(i -> ((amounts_jettons[i]) * (jetton_usd_rates[i])), range(1, length(amounts_path) + 1)) AS amounts_usd_path,
     pools_path,
-    dexes`
+    dexes`)
+}
 
 func LatestArbitragesSqlQuery(config *core.Config, limit uint64) string {
-	return fmt.Sprint(arbitrageSelectFields, `
+	return fmt.Sprint(arbitrageSelectFields(), `
 FROM `, config.DbName, `.arbitrages
 WHERE length(arrayDistinct(senders)) = 1
 ORDER BY time DESC
@@ -95,7 +98,7 @@ LIMIT `, limit)
 
 func TopArbitragesSqlQuery(config *core.Config, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
-	return fmt.Sprint(arbitrageSelectFields, `
+	return fmt.Sprint(arbitrageSelectFields(), `
 FROM `, config.DbName, `.arbitrages
     WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 	AND amount_out_usd - amount_in_usd > 0
@@ -134,6 +137,7 @@ FROM
         ((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate AS usd
 	FROM `, config.DbName, `.arbitrages
     WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+	AND length(arrayDistinct(senders)) = 1
 )`)
 }
 
@@ -154,6 +158,7 @@ SELECT
     count() AS number
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND length(arrayDistinct(senders)) = 1
 GROUP BY sender
 ORDER BY profit_usd DESC
 LIMIT 10
@@ -181,6 +186,7 @@ SELECT
     count() AS number
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
+AND length(arrayDistinct(senders)) = 1
 AND usd > 0
 GROUP BY jetton_symbol
 HAVING number > 1

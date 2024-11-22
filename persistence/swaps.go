@@ -16,6 +16,10 @@ func UsdField(amountType string) string {
 	return fmt.Sprint("(amount_", amountType, " / pow(10, jetton_decimals) * jetton_usd_rate)")
 }
 
+func Symbol(field string) string {
+	return fmt.Sprint("if(", field, " = 'pTON', 'TON', ", field, ")")
+}
+
 var enrichedSwapSelect = fmt.Sprint(`
 SELECT
 	time, 
@@ -23,7 +27,7 @@ SELECT
 	hashes,
 	sender,
 	jetton_in,
-	jetton_in_symbol,
+	`, Symbol("jetton_in_symbol"), ` AS jetton_in_symbol,
 	jetton_in_name,
 	jetton_in_usd_rate,
 	jetton_in_decimals,
@@ -31,7 +35,7 @@ SELECT
 	amount_in / pow(10, jetton_in_decimals) AS amount_jetton_in,
 	floor(`, UsdInField, `, 2) AS in_usd,
 	jetton_out,
-	jetton_out_symbol,
+	`, Symbol("jetton_out_symbol"), ` AS jetton_out_symbol,
 	jetton_out_name,
 	jetton_out_usd_rate,
 	jetton_out_decimals,
