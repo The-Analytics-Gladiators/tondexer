@@ -79,7 +79,7 @@ type EnrichedSwapCH struct {
 	PoolAddress       string    `ch:"pool_address"`
 }
 
-func LatestSwapsSqlQuery(config *core.Config, limit uint64, dex models.Dex) string {
+func LatestSwapsSqlQuery(config *core.DbConfig, limit uint64, dex models.Dex) string {
 	return fmt.Sprint(
 		enrichedSwapSelect, `
 FROM `, config.DbName, `.swaps
@@ -89,7 +89,7 @@ ORDER BY time DESC
 LIMIT `, limit)
 }
 
-func TopSwapsSqlQuery(config *core.Config, period models.Period, dex models.Dex) string {
+func TopSwapsSqlQuery(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(enrichedSwapSelect, `
 FROM `, config.DbName, `.swaps
@@ -112,7 +112,7 @@ type SwapDistribution struct {
 	Usd_2000     uint64 `ch:"usd_2000" json:"usd_2000"`
 }
 
-func SwapsDistributionSqlQuery(config *core.Config, period models.Period, dex models.Dex) string {
+func SwapsDistributionSqlQuery(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT

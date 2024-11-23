@@ -13,7 +13,7 @@ type UserVolume struct {
 	Count       uint64  `json:"count" ch:"count"`
 }
 
-func TopReferrersRequest(config *core.Config, period models.Period, dex models.Dex) string {
+func TopReferrersRequest(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -29,7 +29,7 @@ LIMIT 15
 `)
 }
 
-func TopUsersRequest(config *core.Config, period models.Period, dex models.Dex) string {
+func TopUsersRequest(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -47,7 +47,7 @@ LIMIT 15
 `)
 }
 
-func TopUsersProfiters(config *core.Config, period models.Period) string {
+func TopUsersProfiters(config *core.DbConfig, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT

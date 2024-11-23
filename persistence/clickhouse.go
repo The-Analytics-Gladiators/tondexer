@@ -10,7 +10,7 @@ import (
 	"tondexer/models"
 )
 
-func connection(config *core.Config) (driver.Conn, error) {
+func connection(config *core.DbConfig) (driver.Conn, error) {
 	return clickhouse.Open(&clickhouse.Options{
 		Addr:         []string{fmt.Sprintf("%s:%d", config.DbHost, config.DbPort)},
 		Protocol:     clickhouse.Native,
@@ -24,7 +24,7 @@ func connection(config *core.Config) (driver.Conn, error) {
 	})
 }
 
-func WriteToClickhouse[T any](config *core.Config, entities []*T, table string, batchFunc func(driver.Batch, *T) error) error {
+func WriteToClickhouse[T any](config *core.DbConfig, entities []*T, table string, batchFunc func(driver.Batch, *T) error) error {
 	conn, err := connection(config)
 
 	if err != nil {
@@ -67,7 +67,7 @@ func WriteToClickhouse[T any](config *core.Config, entities []*T, table string, 
 	}
 }
 
-func WriteArbitragesToClickhouse(config *core.Config, arbitrages []*models.ArbitrageCH) error {
+func WriteArbitragesToClickhouse(config *core.DbConfig, arbitrages []*models.ArbitrageCH) error {
 	return WriteToClickhouse(config, arbitrages, "arbitrages", func(batch driver.Batch, model *models.ArbitrageCH) error {
 		return batch.Append(
 			model.Sender,
@@ -96,7 +96,7 @@ func WriteArbitragesToClickhouse(config *core.Config, arbitrages []*models.Arbit
 	})
 }
 
-func ReadClickhouseJettons(config *core.Config) ([]models.ClickhouseJetton, error) {
+func ReadClickhouseJettons(config *core.DbConfig) ([]models.ClickhouseJetton, error) {
 	conn, err := connection(config)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func ReadClickhouseJettons(config *core.Config) ([]models.ClickhouseJetton, erro
 	return result, nil
 }
 
-func ReadWalletMasters(config *core.Config) ([]models.WalletJetton, error) {
+func ReadWalletMasters(config *core.DbConfig) ([]models.WalletJetton, error) {
 	conn, err := connection(config)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ type SummaryStats struct {
 	UniqueUsers  uint64 `ch:"unique_users" json:"unique_users"`
 }
 
-func ReadSingleRow[T any](config *core.Config, sql string) (*T, error) {
+func ReadSingleRow[T any](config *core.DbConfig, sql string) (*T, error) {
 	conn, err := connection(config)
 	if err != nil {
 		return nil, err
@@ -155,7 +155,7 @@ func ReadSingleRow[T any](config *core.Config, sql string) (*T, error) {
 	return &res, nil
 }
 
-func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) error {
+func SaveSwapsToClickhouse(config *core.DbConfig, modelsBatch []*models.SwapCH) error {
 	conn, err := connection(config)
 
 	if err != nil {
@@ -221,7 +221,7 @@ func SaveSwapsToClickhouse(config *core.Config, modelsBatch []*models.SwapCH) er
 	}
 }
 
-func ReadArrayFromClickhouse[T any](config *core.Config, query string) ([]T, error) {
+func ReadArrayFromClickhouse[T any](config *core.DbConfig, query string) ([]T, error) {
 	conn, err := connection(config)
 	if err != nil {
 		return nil, err

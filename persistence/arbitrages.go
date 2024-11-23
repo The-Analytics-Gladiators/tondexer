@@ -15,7 +15,7 @@ type ArbitrageHistoryEntry struct {
 	Number    uint64    `json:"number" ch:"number"`
 }
 
-func ArbitrageHistorySqlQuery(config *core.Config, period models.Period) string {
+func ArbitrageHistorySqlQuery(config *core.DbConfig, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 
 	return fmt.Sprint(`
@@ -88,7 +88,7 @@ func arbitrageSelectFields() string {
     dexes`)
 }
 
-func LatestArbitragesSqlQuery(config *core.Config, limit uint64) string {
+func LatestArbitragesSqlQuery(config *core.DbConfig, limit uint64) string {
 	return fmt.Sprint(arbitrageSelectFields(), `
 FROM `, config.DbName, `.arbitrages
 WHERE length(arrayDistinct(senders)) = 1
@@ -96,7 +96,7 @@ ORDER BY time DESC
 LIMIT `, limit)
 }
 
-func TopArbitragesSqlQuery(config *core.Config, period models.Period) string {
+func TopArbitragesSqlQuery(config *core.DbConfig, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(arbitrageSelectFields(), `
 FROM `, config.DbName, `.arbitrages
@@ -119,7 +119,7 @@ type ArbitrageDistribution struct {
 	Usd_5000      uint64 `ch:"usd_5000" json:"usd_5000"`
 }
 
-func ArbitrageDistributionSqlQuery(config *core.Config, period models.Period) string {
+func ArbitrageDistributionSqlQuery(config *core.DbConfig, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -148,7 +148,7 @@ type TopArbitrageUser struct {
 	Number    uint64  `ch:"number" json:"number"`
 }
 
-func TopArbitrageUsersSql(config *core.Config, period models.Period) string {
+func TopArbitrageUsersSql(config *core.DbConfig, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
@@ -174,7 +174,7 @@ type TopArbitrageJetton struct {
 	Number         uint64  `ch:"number" json:"number"`
 }
 
-func TopArbitrageJettonsSql(config *core.Config, period models.Period) string {
+func TopArbitrageJettonsSql(config *core.DbConfig, period models.Period) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT

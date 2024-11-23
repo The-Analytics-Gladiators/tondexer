@@ -6,7 +6,7 @@ import (
 	"tondexer/models"
 )
 
-func SwapsSummarySql(config *core.Config, period models.Period, dex models.Dex) string {
+func SwapsSummarySql(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprintf(`
 SELECT

@@ -16,7 +16,7 @@ type JettonVolume struct {
 	JettonUsd      float64  `json:"jetton_usd" ch:"jetton_usd"`
 }
 
-func TopJettonRequest(config *core.Config, period models.Period, dex models.Dex) string {
+func TopJettonRequest(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 
 	return fmt.Sprint(`

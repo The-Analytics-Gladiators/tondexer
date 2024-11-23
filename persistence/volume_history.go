@@ -15,7 +15,7 @@ type VolumeHistoryEntry struct {
 	Number          uint64    `json:"number" ch:"number"`
 }
 
-func VolumeHistorySqlQuery(config *core.Config, period models.Period, dex models.Dex) string {
+func VolumeHistorySqlQuery(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT `,

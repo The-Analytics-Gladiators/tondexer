@@ -48,7 +48,7 @@ func swapInfoWithDex(infos []*models.SwapInfo, dex string) []core.Pair[*models.S
 }
 
 func main() {
-	var cfg core.Config
+	var cfg Config
 
 	freeConsoleClient, _ := tonapi.New() // free one for the rates
 	freeConsoleApi := core.TonConsoleApi{Client: freeConsoleClient}
@@ -56,17 +56,25 @@ func main() {
 	if err := cleanenv.ReadConfig(os.Args[1], &cfg); err != nil {
 		panic(err)
 	}
-	jettonInfoCache, e := jettons.InitJettonInfoCache(&cfg, &freeConsoleApi)
+	dbConfig := core.DbConfig{
+		DbHost:     cfg.DbHost,
+		DbPort:     cfg.DbPort,
+		DbUser:     cfg.DbUser,
+		DbPassword: cfg.DbPassword,
+		DbName:     cfg.DbName,
+	}
+
+	jettonInfoCache, e := jettons.InitJettonInfoCache(&dbConfig, &freeConsoleApi)
 	if e != nil {
 		panic(e)
 	}
 
-	walletMasterCache, e := jettons.InitWalletJettonCache(&cfg)
+	walletMasterCache, e := jettons.InitWalletJettonCache(&dbConfig)
 	if e != nil {
 		panic(e)
 	}
 
-	usdRateCache, err := jettons.InitUsdRateCache(&cfg, &freeConsoleApi)
+	usdRateCache, err := jettons.InitUsdRateCache(&dbConfig, &freeConsoleApi)
 	if err != nil {
 		panic(e)
 	}
@@ -193,7 +201,7 @@ func main() {
 			select {
 			case chModels := <-swapChChannel:
 				if chModels != nil {
-					e := persistence.SaveSwapsToClickhouse(&cfg, chModels)
+					e := persistence.SaveSwapsToClickhouse(&dbConfig, chModels)
 					if e != nil {
 						log.Printf("Warning: Unable to save models %v\n", e)
 					}
@@ -211,7 +219,7 @@ func main() {
 
 		arbitrages := arbitrage.FindArbitragesAndDeleteThemFromSetGeneric(processedChModels)
 		if len(arbitrages) > 0 {
-			if e := persistence.WriteArbitragesToClickhouse(&cfg, arbitrages); e != nil {
+			if e := persistence.WriteArbitragesToClickhouse(&dbConfig, arbitrages); e != nil {
 				log.Printf("Warning: Unable to save arbitrages %v\n", e)
 			}
 		}

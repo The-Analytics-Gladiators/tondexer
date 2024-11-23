@@ -14,7 +14,7 @@ import (
 )
 
 func initCache[T any](
-	config *core.Config,
+	config *core.DbConfig,
 	table string,
 	cacheFunction func(key any) (*T, error),
 	batchAppendFunc func(batch driver.Batch, model *T) error,
@@ -63,7 +63,7 @@ func initCache[T any](
 	return cacheManager, nil
 }
 
-func InitJettonInfoCache(config *core.Config, api *core.TonConsoleApi) (*cache.LoadableCache[any], error) {
+func InitJettonInfoCache(config *core.DbConfig, api *core.TonConsoleApi) (*cache.LoadableCache[any], error) {
 	return initCache[models.ChainTokenInfo](
 		config,
 		"clickhouse_jetton",
@@ -98,7 +98,7 @@ func InitJettonInfoCache(config *core.Config, api *core.TonConsoleApi) (*cache.L
 		})
 }
 
-func InitUsdRateCache(config *core.Config, consoleApi *core.TonConsoleApi) (*cache.LoadableCache[any], error) {
+func InitUsdRateCache(config *core.DbConfig, consoleApi *core.TonConsoleApi) (*cache.LoadableCache[any], error) {
 	cacheManager, err := initCache[float64](
 		config,
 		"",
@@ -144,7 +144,7 @@ func InitUsdRateCache(config *core.Config, consoleApi *core.TonConsoleApi) (*cac
 	return cacheManager, err
 }
 
-func recalculateUsdRates(config *core.Config, consoleApi *core.TonConsoleApi, cacheManager *cache.LoadableCache[any]) {
+func recalculateUsdRates(config *core.DbConfig, consoleApi *core.TonConsoleApi, cacheManager *cache.LoadableCache[any]) {
 	jettons, e := persistence.ReadClickhouseJettons(config)
 	if e != nil {
 		log.Printf("Unable to read jetton from CH: %v \n", e)
@@ -191,7 +191,7 @@ func recalculateUsdRates(config *core.Config, consoleApi *core.TonConsoleApi, ca
 	writeBatch(jettonRates)
 }
 
-func InitWalletJettonCache(config *core.Config) (*cache.LoadableCache[any], error) {
+func InitWalletJettonCache(config *core.DbConfig) (*cache.LoadableCache[any], error) {
 	return initCache[models.WalletJetton](
 		config,
 		"wallet_to_master",

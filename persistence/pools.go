@@ -25,7 +25,7 @@ type PoolVolume struct {
 	Dex               string   `json:"dex" ch:"pool_dex"`
 }
 
-func TopPoolsRequest(config *core.Config, period models.Period, dex models.Dex) string {
+func TopPoolsRequest(config *core.DbConfig, period models.Period, dex models.Dex) string {
 	periodParams := models.PeriodParamsMap[period]
 	return fmt.Sprint(`
 SELECT
