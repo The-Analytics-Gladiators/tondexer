@@ -156,13 +156,13 @@ func TopArbitrageUsersSql(config *core.DbConfig, period models.Period) string {
 	return fmt.Sprint(`
 SELECT
     sender,
-    sum(((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate) AS profit_usd,
+    sum(((amount_out - amount_in) / pow(10, jetton_decimals)) * jetton_usd_rate as usd) AS profit_usd,
     uniq(jetton_symbol) as jettons,
     count() AS number
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND length(arrayDistinct(senders)) = 1
-AND profit_usd < 10000
+AND usd < 10000
 GROUP BY sender
 ORDER BY profit_usd DESC
 LIMIT 10
@@ -192,7 +192,7 @@ FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND length(arrayDistinct(senders)) = 1
 AND usd > 0
-AND profit_usd < 10000
+AND usd < 10000
 GROUP BY jetton_symbol
 HAVING number > 1
 ORDER BY profit_usd DESC

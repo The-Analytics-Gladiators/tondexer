@@ -37,6 +37,7 @@ func main() {
 		DbPassword: cfg.DbPassword,
 		DbName:     cfg.DbName,
 	}
+
 	route := gin.Default()
 
 	route.GET("/api/summary", oneRowPeriodDexRequest[persistence.SummaryStats](&dbConfig, func(cfg *core.DbConfig, period models.Period, dex models.Dex) string {
