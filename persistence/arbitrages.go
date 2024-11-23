@@ -27,6 +27,7 @@ SELECT `,
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND usd_diff > 0
+AND usd_diff < 10000
 AND length(arrayDistinct(senders)) = 1
 GROUP BY period
 ORDER BY period ASC WITH FILL STEP `, periodParams.ToInterval, `(1)`,
@@ -92,6 +93,7 @@ func LatestArbitragesSqlQuery(config *core.DbConfig, limit uint64) string {
 	return fmt.Sprint(arbitrageSelectFields(), `
 FROM `, config.DbName, `.arbitrages
 WHERE length(arrayDistinct(senders)) = 1
+AND amount_out_usd - amount_in_usd < 10000
 ORDER BY time DESC
 LIMIT `, limit)
 }
@@ -102,6 +104,7 @@ func TopArbitragesSqlQuery(config *core.DbConfig, period models.Period) string {
 FROM `, config.DbName, `.arbitrages
     WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 	AND amount_out_usd - amount_in_usd > 0
+	AND amount_out_usd - amount_in_usd < 10000
 	AND length(arrayDistinct(senders)) = 1
 	ORDER BY amount_out_usd - amount_in_usd desc
 	LIMIT 15
@@ -159,6 +162,7 @@ SELECT
 FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND length(arrayDistinct(senders)) = 1
+AND profit_usd < 10000
 GROUP BY sender
 ORDER BY profit_usd DESC
 LIMIT 10
@@ -188,6 +192,7 @@ FROM `, config.DbName, `.arbitrages
 WHERE time >= `, periodParams.ToStartOf, `(subtractDays(now(), `, periodParams.WindowInDays, `))
 AND length(arrayDistinct(senders)) = 1
 AND usd > 0
+AND profit_usd < 10000
 GROUP BY jetton_symbol
 HAVING number > 1
 ORDER BY profit_usd DESC
