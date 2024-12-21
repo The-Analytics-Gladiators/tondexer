@@ -186,6 +186,7 @@ func swapPoolsInfoFromSwapTraces(swapTraces *DedustSwapTraces) ([]*models.SwapPo
 
 		return &models.SwapPoolInfo{
 			Hash:     poolTrace.Transaction.Hash,
+			Lt:       uint64(poolTrace.Transaction.Lt),
 			Address:  poolAddress,
 			Sender:   sender,
 			JettonIn: jettonIn,

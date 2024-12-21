@@ -83,7 +83,7 @@ func DedustSwapInfoToChSwap(info *DedustSwapInfo,
 		swapChs = append(swapChs, &SwapCH{
 			Dex:               DeDust,
 			Hashes:            []string{poolInfo.Hash},
-			Lt:                info.Lt,
+			Lt:                poolInfo.Lt,
 			Time:              info.Time,
 			JettonIn:          jettonMasterIn,
 			AmountIn:          amountIn,

@@ -21,12 +21,18 @@ var tonApiClient, _ = tonapi.New()
 var api = core.TonConsoleApi{Client: tonApiClient}
 var chainTonApi, _ = jettons.GetTonApi()
 
-func infoCache(wallet string) *models.ChainTokenInfo {
+func walletCache(wallet string) *models.ChainTokenInfo {
 
 	master, _ := chainTonApi.MasterByWallet(wallet)
 	info, _ := api.JettonInfoByMaster(master.String())
 	return info
 }
+
+func masterCache(master string) *models.ChainTokenInfo {
+	info, _ := api.JettonInfoByMaster(master)
+	return info
+}
+
 func rateCache(s string) *float64 {
 	rate, _ := api.JettonRateToUsdByMaster(s)
 	return &rate
@@ -37,7 +43,7 @@ func TestTwoCycle(t *testing.T) {
 	trace, _ := client.GetTrace(context.Background(), params)
 	stonfiSwapInfo := stonfi.ExtractStonfiSwapsFromRootTrace(trace)[0]
 	stonfiChModel1 := models.ToChSwap(stonfiSwapInfo, "StonfiV1",
-		infoCache, rateCache)
+		walletCache, rateCache)
 
 	params = tonapi.GetTraceParams{TraceID: "8535c00aab48da6e2b926c2c26821aab259b69837426b1306cc2946a603ca659"}
 	trace, _ = client.GetTrace(context.Background(), params)
@@ -45,7 +51,7 @@ func TestTwoCycle(t *testing.T) {
 	trace, _ = client.GetTrace(context.Background(), params)
 	stonfiSwapInfo = stonfi.ExtractStonfiSwapsFromRootTrace(trace)[0]
 	stonfiChModel2 := models.ToChSwap(stonfiSwapInfo, "StonfiV1",
-		infoCache, rateCache)
+		walletCache, rateCache)
 
 	set := core.NewEvictableSet[*models.SwapCH](time.Second * 0)
 	set.Add(stonfiChModel1)
@@ -68,15 +74,15 @@ func TestThreeCycle(t *testing.T) {
 
 	stonfiSwapInfo := stonfi.ExtractStonfiSwapsFromRootTrace(trace)[0]
 	stonfiChModel := models.ToChSwap(stonfiSwapInfo, "StonfiV1",
-		infoCache, rateCache)
+		walletCache, rateCache)
 
 	stonfi2SwapInfo := stonfiv2.ExtractStonfiV2SwapsFromRootTrace(trace)[0]
 	stonfi2ChModel := models.ToChSwap(stonfi2SwapInfo, "StonfiV2",
-		infoCache, rateCache)
+		walletCache, rateCache)
 
 	dedustSwapInfo := dedust.ExtractDedustSwapsFromRootTrace(trace)[0]
-	dedustChModel := models.ToChSwap(dedustSwapInfo, "DeDust",
-		infoCache, rateCache)
+	dedustChModel := models.DedustSwapInfoToChSwap(dedustSwapInfo,
+		walletCache, masterCache, rateCache)[0]
 
 	set := core.NewEvictableSet[*models.SwapCH](time.Second * 0)
 	set.Add(stonfiChModel)
@@ -115,4 +121,28 @@ func TestThreeCycle(t *testing.T) {
 	assert.Equal(t, []string{"EQA6UVoybsI7mFQQaqMLMVmQovCGBGx0rOUuyf2Q2GfGmvCN", "EQA6UVoybsI7mFQQaqMLMVmQovCGBGx0rOUuyf2Q2GfGmvCN", "EQA6UVoybsI7mFQQaqMLMVmQovCGBGx0rOUuyf2Q2GfGmvCN"},
 		arbitrage.Senders)
 
+}
+
+func TestThreeCycle2(t *testing.T) {
+	params := tonapi.GetTraceParams{TraceID: "85d29db80fbd205417f18521a3cb64d7dcfc6837742e225889efbcaec5facd20"}
+	trace, _ := client.GetTrace(context.Background(), params)
+
+	dedustSwapInfo := dedust.ExtractDedustSwapsFromRootTrace(trace)[0]
+	dedustChModels := models.DedustSwapInfoToChSwap(dedustSwapInfo,
+		walletCache, masterCache, rateCache)
+
+	set := core.NewEvictableSet[*models.SwapCH](time.Second * 0)
+	set.Add(dedustChModels[0])
+	set.Add(dedustChModels[1])
+	set.Add(dedustChModels[2])
+
+	arbitrages := FindArbitragesAndDeleteThemFromSetGeneric(set)
+
+	allElements := set.Evict()
+
+	assert.Equal(t, 0, len(allElements))
+	assert.Equal(t, 1, len(arbitrages))
+
+	arbitrage := arbitrages[0]
+	assert.Equal(t, []string{"pTON", "PUNK", "HYDRA", "pTON"}, arbitrage.JettonSymbols)
 }

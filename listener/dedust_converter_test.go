@@ -12,8 +12,6 @@ import (
 	"tondexer/models"
 )
 
-var client, _ = tonapi.New()
-
 var tonApiClient, _ = tonapi.New()
 var api = core.TonConsoleApi{Client: tonApiClient}
 var chainTonApi, _ = jettons.GetTonApi()
@@ -51,7 +49,7 @@ func TestSingleSwap(t *testing.T) {
 
 	assert.Equal(t, "DeDust", swapCh.Dex)
 	assert.Equal(t, []string{"5ae1d94b1a111b15ea7a9fcb8f63878e27b270ce43bee70be4553f3c8c344b23"}, swapCh.Hashes)
-	assert.Equal(t, uint64(52081446000001), swapCh.Lt)
+	assert.Equal(t, uint64(52081449000001), swapCh.Lt)
 	assert.Equal(t, "EQC47093oX5Xhb0xuk2lCr2RhS8rj-vul61u4W2UH5ORmG_O", swapCh.JettonIn)
 	assert.Equal(t, big.NewInt(13446214171778), swapCh.AmountIn)
 	assert.Equal(t, "GRAM", swapCh.JettonInSymbol)
@@ -83,7 +81,7 @@ func TestThreeCycleSwap(t *testing.T) {
 
 	assert.Equal(t, "DeDust", swapsCh[0].Dex)
 	assert.Equal(t, []string{"ffff827fc3f522485992d132545c80cde7f1177520c5e59a2bf174ce7539c3ce"}, swapsCh[0].Hashes)
-	assert.Equal(t, uint64(52083519000003), swapsCh[0].Lt)
+	assert.Equal(t, uint64(52083522000001), swapsCh[0].Lt)
 	assert.Equal(t, "EQCM3B12QK1e4yZSf8GtBRT0aLMNyEsBc_DhVfRRtOEffLez", swapsCh[0].JettonIn)
 	assert.Equal(t, big.NewInt(110575230709), swapsCh[0].AmountIn)
 	assert.Equal(t, "pTON", swapsCh[0].JettonInSymbol)
@@ -101,7 +99,7 @@ func TestThreeCycleSwap(t *testing.T) {
 
 	assert.Equal(t, "DeDust", swapsCh[1].Dex)
 	assert.Equal(t, []string{"68ec26561e71e4d06ea0b7c5d596d62ff79e14112f4a7762d5f006c9c9e0d064"}, swapsCh[1].Hashes)
-	assert.Equal(t, uint64(52083519000003), swapsCh[1].Lt)
+	assert.Equal(t, uint64(52083522000004), swapsCh[1].Lt)
 	assert.Equal(t, "EQDNhy-nxYFgUqzfUzImBEP67JqsyMIcyk2S5_RwNNEYku0k", swapsCh[1].JettonIn)
 	assert.Equal(t, big.NewInt(105095392809), swapsCh[1].AmountIn)
 	assert.Equal(t, "stTON", swapsCh[1].JettonInSymbol)
@@ -119,7 +117,7 @@ func TestThreeCycleSwap(t *testing.T) {
 
 	assert.Equal(t, "DeDust", swapsCh[2].Dex)
 	assert.Equal(t, []string{"7ce56a411c8ca7f2240aabced235222f36fa370177541f5d441f51ca28e3bf09"}, swapsCh[2].Hashes)
-	assert.Equal(t, uint64(52083519000003), swapsCh[2].Lt)
+	assert.Equal(t, uint64(52083529000001), swapsCh[2].Lt)
 	assert.Equal(t, "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs", swapsCh[2].JettonIn)
 	assert.Equal(t, big.NewInt(610533973), swapsCh[2].AmountIn)
 	assert.Equal(t, "USD₮", swapsCh[2].JettonInSymbol)
@@ -149,7 +147,7 @@ func TestThreeCycleWithOneFailed(t *testing.T) {
 
 	assert.Equal(t, "DeDust", swapsCh[0].Dex)
 	assert.Equal(t, []string{"9861959c84e36f3810b26197935455d3547a7a09607595b58af491d0edd3f586"}, swapsCh[0].Hashes)
-	assert.Equal(t, uint64(52081415000009), swapsCh[0].Lt)
+	assert.Equal(t, uint64(52081418000004), swapsCh[0].Lt)
 	assert.Equal(t, "EQCM3B12QK1e4yZSf8GtBRT0aLMNyEsBc_DhVfRRtOEffLez", swapsCh[0].JettonIn)
 	assert.Equal(t, big.NewInt(12394374999), swapsCh[0].AmountIn)
 	assert.Equal(t, "pTON", swapsCh[0].JettonInSymbol)
@@ -167,7 +165,7 @@ func TestThreeCycleWithOneFailed(t *testing.T) {
 
 	assert.Equal(t, "DeDust", swapsCh[1].Dex)
 	assert.Equal(t, []string{"945222e5cd11e6cc20a0fc98e88a2f2e042446df5a0cbceeb79d1b4ba2440c57"}, swapsCh[1].Hashes)
-	assert.Equal(t, uint64(52081415000009), swapsCh[1].Lt)
+	assert.Equal(t, uint64(52081421000004), swapsCh[1].Lt)
 	assert.Equal(t, "EQAWpz2_G0NKxlG2VvgFbgZGPt8Y1qe0cGj-4Yw5BfmYR5iF", swapsCh[1].JettonIn)
 	assert.Equal(t, big.NewInt(157146238205606), swapsCh[1].AmountIn)
 	assert.Equal(t, "MEM", swapsCh[1].JettonInSymbol)

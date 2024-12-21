@@ -8,6 +8,7 @@ import (
 
 type SwapPoolInfo struct {
 	Hash     string
+	Lt       uint64
 	Address  *address.Address
 	Sender   *address.Address
 	JettonIn *address.Address

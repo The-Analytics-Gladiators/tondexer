@@ -59,6 +59,17 @@ func findArbitrageChain(firstSwap *models.SwapCH, inMap map[string]*models.SwapC
 	if i >= 10 {
 		return nil, []*models.SwapCH{}
 	}
+
+	ordered := true
+	for i := 0; i < len(swaps)-1; i++ {
+		if swaps[i].Lt > swaps[i+1].Lt {
+			ordered = false
+		}
+	}
+	if !ordered {
+		return nil, []*models.SwapCH{}
+	}
+
 	return SwapsToArbitrage(swaps), swaps
 }
 
