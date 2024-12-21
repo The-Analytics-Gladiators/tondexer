@@ -2,11 +2,14 @@ package dedust
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"log"
 	"math/big"
 	"time"
+	"tondexer/common"
 	"tondexer/core"
 	"tondexer/models"
 )
@@ -21,92 +24,118 @@ const dedustSwapOpCode = "0xea06185d"
 const dedustPayoutFromPoolOpCode = "0xad4eb6f5"
 const dedustPayoutOpCode = "0x474f86cf"
 const jettonTransferOpCode = "0x0f8a7ea5"
-
-var stonfiPtonWallet = address.MustParseAddr("EQARULUYsmJq1RiZ-YiH-IJLcAZUVkVff-KBPwEmmaQGH6aC")
+const dedustSwapPeerOpCode = "0x72aca8aa"
 
 type DedustSwapTraces struct {
 	Root                   *tonapi.Trace
 	OptInVaultWalletTrace  OptTrace
 	InVaultTrace           *tonapi.Trace
-	PoolTrace              *tonapi.Trace
+	PoolTraces             []*tonapi.Trace
 	OutVaultTrace          *tonapi.Trace
 	OptOutVaultWalletTrace OptTrace
 }
 
-func ExtractDedustSwapsFromRootTrace(root *tonapi.Trace) []*models.SwapInfo {
-	infos := core.Map(findSwapTraces(root), func(t *DedustSwapTraces) *models.SwapInfo {
-		info, e := swapInfoFromDedustTraces(t)
+func ExtractDedustSwapsFromRootTrace(root *tonapi.Trace) []*models.DedustSwapInfo {
+	infos := common.Map(findSwapTraces(root), func(t *DedustSwapTraces) *models.DedustSwapInfo {
+		info, e := dedustSwapInfoFromDedustTraces(t)
 		if e != nil {
 			log.Printf("Error extracting dedust Swap Info from %v: %v", t.InVaultTrace.Transaction.Hash, e)
 			return nil
 		}
 		return info
 	})
-	return core.Filter(infos, func(info *models.SwapInfo) bool { return info != nil })
+	return common.Filter(infos, func(info *models.DedustSwapInfo) bool { return info != nil })
+}
+
+func vaultInMessageProperOpCode(inMsg tonapi.OptMessage) bool {
+	return inMsg.IsSet() &&
+		inMsg.Value.OpCode.IsSet() &&
+		(inMsg.Value.OpCode.Value == dedustSwapOpCode || inMsg.Value.OpCode.Value == core.JettonNotifyOpCode)
+}
+
+func poolChildIsVaultAndHasProperCode(child tonapi.Trace) bool {
+	return common.Contains(child.Interfaces, "dedust_vault") &&
+		child.Transaction.InMsg.Set &&
+		child.Transaction.InMsg.Value.OpCode.IsSet() &&
+		child.Transaction.InMsg.Value.OpCode.Value == dedustPayoutFromPoolOpCode
+}
+
+func GetAfterInVaultPoolChain(inVaultTrace *tonapi.Trace) []*tonapi.Trace {
+	currentTrace := inVaultTrace
+	var result []*tonapi.Trace
+
+	i := 1
+	for len(currentTrace.Children) == 1 &&
+		common.Contains(currentTrace.Children[0].Interfaces, "dedust_pool") &&
+		currentTrace.Children[0].Transaction.InMsg.Set &&
+		currentTrace.Children[0].Transaction.InMsg.Value.OpCode.IsSet() &&
+		(i == 1 && currentTrace.Children[0].Transaction.InMsg.Value.OpCode.Value == dedustSwapInternalOpCode ||
+			i > 1 && currentTrace.Children[0].Transaction.InMsg.Value.OpCode.Value == dedustSwapPeerOpCode) {
+
+		result = append(result, &currentTrace.Children[0])
+		currentTrace = &currentTrace.Children[0]
+		i++
+	}
+
+	return result
 }
 
 func findSwapTraces(root *tonapi.Trace) []*DedustSwapTraces {
-
 	var traverse func(trace *tonapi.Trace, previousTrace *tonapi.Trace)
 
 	var result []*DedustSwapTraces
 
 	traverse = func(trace *tonapi.Trace, previousTrace *tonapi.Trace) {
 		inMsg := trace.Transaction.InMsg
-		if core.Contains(trace.Interfaces, "dedust_vault") &&
-			inMsg.IsSet() &&
-			inMsg.Value.OpCode.IsSet() &&
-			(inMsg.Value.OpCode.Value == dedustSwapOpCode || inMsg.Value.OpCode.Value == core.JettonNotifyOpCode) &&
-			len(trace.Children) == 1 &&
-			core.Contains(trace.Children[0].Interfaces, "dedust_pool") &&
-			trace.Children[0].Transaction.InMsg.Set &&
-			trace.Children[0].Transaction.InMsg.Value.OpCode.IsSet() &&
-			trace.Children[0].Transaction.InMsg.Value.OpCode.Value == dedustSwapInternalOpCode &&
-			len(trace.Children[0].Children) == 1 &&
-			core.Contains(trace.Children[0].Children[0].Interfaces, "dedust_vault") &&
-			trace.Children[0].Children[0].Transaction.InMsg.Set &&
-			trace.Children[0].Children[0].Transaction.InMsg.Value.OpCode.IsSet() &&
-			trace.Children[0].Children[0].Transaction.InMsg.Value.OpCode.Value == dedustPayoutFromPoolOpCode &&
-			// Failed payout are through the vault
-			trace.Children[0].Children[0].Transaction.Account.Address != trace.Transaction.Account.Address {
+		if common.Contains(trace.Interfaces, "dedust_vault") &&
+			vaultInMessageProperOpCode(inMsg) {
 
-			swapTraces := &DedustSwapTraces{
-				Root:          root,
-				InVaultTrace:  trace,
-				PoolTrace:     &trace.Children[0],
-				OutVaultTrace: &trace.Children[0].Children[0],
-			}
-			if inMsg.Value.OpCode.Value == dedustSwapOpCode {
-				// means that input token = TON
-				// => output Token != TON
-				if len(trace.Children[0].Children[0].Children) == 1 {
-					swapTraces.OptOutVaultWalletTrace = OptTrace{Set: true, Trace: &trace.Children[0].Children[0].Children[0]}
-					swapTraces.OptInVaultWalletTrace = OptTrace{Set: false}
-				}
-			}
-			if inMsg.Value.OpCode.Value == core.JettonNotifyOpCode {
-				// means the input token != TON
-				if previousTrace != nil {
-					swapTraces.OptInVaultWalletTrace = OptTrace{Set: true, Trace: previousTrace}
-					//swapTraces.OptOutVaultWalletTrace = OptTrace{Set: false}
-				}
-			}
-			if len(swapTraces.OutVaultTrace.Children) == 1 &&
-				swapTraces.OutVaultTrace.Children[0].Transaction.InMsg.IsSet() &&
-				swapTraces.OutVaultTrace.Children[0].Transaction.InMsg.Value.OpCode.IsSet() &&
-				swapTraces.OutVaultTrace.Children[0].Transaction.InMsg.Value.OpCode.Value == jettonTransferOpCode {
-				//means output token != TON
-				swapTraces.OptOutVaultWalletTrace = OptTrace{Set: true, Trace: &swapTraces.OutVaultTrace.Children[0]}
-			}
-
-			result = append(result, swapTraces)
-			if swapTraces.OptOutVaultWalletTrace.Set {
-				for _, child := range swapTraces.OptOutVaultWalletTrace.Trace.Children {
-					traverse(&child, swapTraces.OptOutVaultWalletTrace.Trace)
+			poolChain := GetAfterInVaultPoolChain(trace)
+			if len(poolChain) == 0 {
+				for _, child := range trace.Children {
+					traverse(&child, trace)
 				}
 			} else {
-				for _, child := range swapTraces.OutVaultTrace.Children {
-					traverse(&child, swapTraces.OutVaultTrace)
+				lastPoolTrace := poolChain[len(poolChain)-1]
+				if len(lastPoolTrace.Children) == 1 &&
+					poolChildIsVaultAndHasProperCode(lastPoolTrace.Children[0]) {
+
+					swapTraces := &DedustSwapTraces{
+						Root:         root,
+						InVaultTrace: trace,
+						PoolTraces:   poolChain,
+						//OutVaultTrace: &trace.Children[0].Children[0],
+					}
+
+					if inMsg.Value.OpCode.Value == dedustSwapOpCode {
+						// means that input token = TON
+						swapTraces.OptInVaultWalletTrace = OptTrace{Set: false}
+					}
+					if inMsg.Value.OpCode.Value == core.JettonNotifyOpCode {
+						// means the input token != TON
+						if previousTrace != nil {
+							swapTraces.OptInVaultWalletTrace = OptTrace{Set: true, Trace: previousTrace}
+						}
+					}
+					outVaultTrace := lastPoolTrace.Children[0]
+					swapTraces.OutVaultTrace = &outVaultTrace
+					if len(swapTraces.OutVaultTrace.Children) == 1 &&
+						swapTraces.OutVaultTrace.Children[0].Transaction.InMsg.IsSet() &&
+						swapTraces.OutVaultTrace.Children[0].Transaction.InMsg.Value.OpCode.IsSet() &&
+						swapTraces.OutVaultTrace.Children[0].Transaction.InMsg.Value.OpCode.Value == jettonTransferOpCode {
+						//means output token != TON
+						swapTraces.OptOutVaultWalletTrace = OptTrace{Set: true, Trace: &swapTraces.OutVaultTrace.Children[0]}
+					} else {
+						swapTraces.OptOutVaultWalletTrace = OptTrace{Set: false}
+					}
+					result = append(result, swapTraces)
+					for _, child := range swapTraces.OutVaultTrace.Children {
+						traverse(&child, lastPoolTrace)
+					}
+				} else {
+					for _, child := range lastPoolTrace.Children {
+						traverse(&child, lastPoolTrace)
+					}
 				}
 			}
 		} else {
@@ -120,152 +149,111 @@ func findSwapTraces(root *tonapi.Trace) []*DedustSwapTraces {
 	return result
 }
 
-func swapInfoFromDedustTraces(swapTraces *DedustSwapTraces) (*models.SwapInfo, error) {
-	var poolJson PoolJsonBody
-	if err := json.Unmarshal(swapTraces.PoolTrace.Transaction.InMsg.Value.DecodedBody, &poolJson); err != nil {
-		return nil, err
-	}
+func swapPoolsInfoFromSwapTraces(swapTraces *DedustSwapTraces) ([]*models.SwapPoolInfo, error) {
+	var e error
+	poolInfos := common.Map(swapTraces.PoolTraces, func(poolTrace *tonapi.Trace) *models.SwapPoolInfo {
+		if poolTrace.Transaction.ComputePhase.Set &&
+			poolTrace.Transaction.ComputePhase.Value.ExitCode.IsSet() &&
+			poolTrace.Transaction.ComputePhase.Value.ExitCode.Value != 0 {
+			return nil
+		}
 
-	swapTransferNotification, err := notificationFromSwapTraces(swapTraces, poolJson)
-	if err != nil {
-		return nil, err
-	}
+		var poolJson PoolJsonBody
+		if err := json.Unmarshal(poolTrace.Transaction.InMsg.Value.DecodedBody, &poolJson); err != nil {
+			e = err
+		}
+		poolAddress, err := address.ParseRawAddr(poolTrace.Transaction.Account.Address)
+		if err != nil {
+			e = err
+		}
+		var jettonIn *address.Address
+		if poolJson.Asset != nil {
+			jettonIn, err = address.ParseRawAddr(fmt.Sprintf("%v:%v", poolJson.Asset.Jetton.WorkchainId, poolJson.Asset.Jetton.Address))
+			e = err
+		}
+		amount, p := new(big.Int).SetString(poolJson.Amount, 10)
+		if !p {
+			e = errors.New("invalid amount")
+		}
 
-	payment, err := paymentFromSwapTraces(swapTraces)
-	if err != nil {
-		return nil, err
-	}
+		limit, _ := new(big.Int).SetString(poolJson.Current.Limit, 10)
 
-	// I don't know where the referral amount is..
-	var referral *models.PayoutRequest
-	if swapTransferNotification.ReferralAddress != nil {
-		copyPayment := *payment
-		copyPayment.Amount1Out = big.NewInt(0)
-		referral = &copyPayment
-		referral.Owner = swapTransferNotification.ReferralAddress
-	}
+		sender, err := address.ParseRawAddr(poolJson.SenderAddr)
+		sender.SetBounce(false)
+		if err != nil {
+			e = err
+		}
 
-	return &models.SwapInfo{
-		TraceID:      swapTraces.Root.Transaction.Hash,
-		Notification: swapTransferNotification,
-		Payment:      payment,
-		Referral:     referral,
-		PoolAddress:  address.MustParseRawAddr(swapTraces.PoolTrace.Transaction.Account.Address),
-	}, nil
+		return &models.SwapPoolInfo{
+			Hash:     poolTrace.Transaction.Hash,
+			Address:  poolAddress,
+			Sender:   sender,
+			JettonIn: jettonIn,
+			AmountIn: amount,
+			Limit:    limit,
+		}
+	})
+	if e != nil {
+		return nil, e
+	}
+	return common.FilterNonNill(poolInfos), nil
 }
 
-func notificationFromSwapTraces(swapTraces *DedustSwapTraces, poolJson PoolJsonBody) (*models.SwapTransferNotification, error) {
+func dedustSwapInfoFromDedustTraces(swapTraces *DedustSwapTraces) (*models.DedustSwapInfo, error) {
+	poolInfos, e := swapPoolsInfoFromSwapTraces(swapTraces)
+	if e != nil {
+		return nil, e
+	}
 
-	var queryId uint64
-	var amount *big.Int
-	var minOut *big.Int
-	var referralAddress *address.Address
+	if len(poolInfos) == 0 {
+		return nil, errors.New("no dedust swap pools")
+	}
 
-	if !swapTraces.OptInVaultWalletTrace.Set {
-		// source token is TON
-		var inVaultJson InVaultJsonBodyForTon
-		if err := json.Unmarshal(swapTraces.InVaultTrace.Transaction.InMsg.Value.DecodedBody, &inVaultJson); err != nil {
-			return nil, err
-		}
-		queryId = inVaultJson.QueryID
+	sender := poolInfos[0].Sender
 
-		var success bool
-		amount, success = new(big.Int).SetString(inVaultJson.Amount, 10)
-		if !success {
-			log.Printf("error parsing amount '%v' for inVault %v\n", inVaultJson.Amount, swapTraces.InVaultTrace.Transaction.Hash)
-			amount = big.NewInt(0)
+	var inWalletAddress *address.Address
+	if swapTraces.OptInVaultWalletTrace.Set {
+		inWalletAddress, e = address.ParseRawAddr(swapTraces.OptInVaultWalletTrace.Trace.Transaction.Account.Address)
+		if e != nil {
+			return nil, e
 		}
-		minOut, success = new(big.Int).SetString(inVaultJson.Step.Params.Limit, 10)
-		if !success {
-			log.Printf("error parsing limit '%v' for inVault %v\n", inVaultJson.Step.Params.Limit, swapTraces.InVaultTrace.Transaction.Hash)
-		}
+	}
 
-		if inVaultJson.SwapParams.ReferralAddr != "" {
-			referralAddress = address.MustParseRawAddr(inVaultJson.SwapParams.ReferralAddr)
+	var outWalletAddress *address.Address
+	if swapTraces.OptOutVaultWalletTrace.Set {
+		outWalletAddress, e = address.ParseRawAddr(swapTraces.OptOutVaultWalletTrace.Trace.Transaction.Account.Address)
+		if e != nil {
+			return nil, e
 		}
+	}
+	var lt uint64
+	var t time.Time
+	if swapTraces.OptInVaultWalletTrace.Set {
+		lt = uint64(swapTraces.OptInVaultWalletTrace.Trace.Transaction.Lt)
+		t = time.UnixMilli(swapTraces.OptInVaultWalletTrace.Trace.Transaction.Utime * 1000)
 	} else {
-		// source token is not TON
-		var inVaultJson InVaultBodyForToken
-		if err := json.Unmarshal(swapTraces.InVaultTrace.Transaction.InMsg.Value.DecodedBody, &inVaultJson); err != nil {
-			return nil, err
-		}
-		queryId = inVaultJson.QueryID
-
-		var success bool
-		amount, success = new(big.Int).SetString(inVaultJson.Amount, 10)
-		if !success {
-			log.Printf("error parsing amount '%v' for inVault %v\n", inVaultJson.Amount, swapTraces.InVaultTrace.Transaction.Hash)
-			amount = big.NewInt(0)
-		}
-
-		minOut, success = new(big.Int).SetString(inVaultJson.ForwardPayload.Value.Value.Step.Params.Limit, 10)
-		if !success {
-			log.Printf("error parsing limit '%v' for inVault %v\n", inVaultJson.ForwardPayload.Value.Value.Step.Params.Limit, swapTraces.InVaultTrace.Transaction.Hash)
-		}
-
-		if inVaultJson.ForwardPayload.Value.Value.SwapParams.ReferralAddr != "" {
-			referralAddress = address.MustParseRawAddr(inVaultJson.ForwardPayload.Value.Value.SwapParams.ReferralAddr)
-		}
+		lt = uint64(swapTraces.InVaultTrace.Transaction.Lt)
+		t = time.UnixMilli(swapTraces.InVaultTrace.Transaction.Utime * 1000)
 	}
-
-	var sender *address.Address
-	if poolJson.SenderAddr != "" {
-		sender = address.MustParseRawAddr(poolJson.SenderAddr)
-	}
-
-	return &models.SwapTransferNotification{
-		Hash:            swapTraces.InVaultTrace.Transaction.Hash,
-		Lt:              uint64(swapTraces.InVaultTrace.Transaction.Lt),
-		TransactionTime: time.UnixMilli(swapTraces.InVaultTrace.Transaction.Utime * 1000),
-		EventCatchTime:  time.Now(),
-		QueryId:         queryId,
-		Amount:          amount,
-		Sender:          sender,
-		TokenWallet:     nil, // unused in fact
-		MinOut:          minOut,
-		ToAddress:       nil,
-		ReferralAddress: referralAddress,
-	}, nil
-}
-
-func paymentFromSwapTraces(swapTraces *DedustSwapTraces) (*models.PayoutRequest, error) {
 
 	var outVaultJson OutVaultJsonBody
 	if err := json.Unmarshal(swapTraces.OutVaultTrace.Transaction.InMsg.Value.DecodedBody, &outVaultJson); err != nil {
 		return nil, err
 	}
-	var tokenInWalletAddress *address.Address
-	if swapTraces.OptInVaultWalletTrace.Set {
-		tokenInWalletAddress = address.MustParseRawAddr(swapTraces.OptInVaultWalletTrace.Trace.Transaction.Account.Address)
-	} else {
-		// otherwise it is TON. Taking stonfi pTON wallet just for reference
-		tokenInWalletAddress = stonfiPtonWallet
-	}
-	var tokenOutWalletAddress *address.Address
-	if swapTraces.OptOutVaultWalletTrace.Set {
-		tokenOutWalletAddress = address.MustParseRawAddr(swapTraces.OptOutVaultWalletTrace.Trace.Transaction.Account.Address)
-	} else {
-		tokenOutWalletAddress = stonfiPtonWallet
+	amountOut, p := new(big.Int).SetString(outVaultJson.Amount, 10)
+	if !p {
+		return nil, errors.New("invalid amount out")
 	}
 
-	amountOut, success := new(big.Int).SetString(outVaultJson.Amount, 10) //strconv.ParseUint(outVaultJson.Amount, 10, 64)
-	if !success {
-		log.Printf("Unable to parse amount '%v' from outVault for Hash %v",
-			outVaultJson.Amount, swapTraces.OutVaultTrace.Transaction.Hash)
-		amountOut = big.NewInt(0)
-	}
-
-	return &models.PayoutRequest{
-		Hash:                swapTraces.OutVaultTrace.Transaction.Hash,
-		Lt:                  uint64(swapTraces.OutVaultTrace.Transaction.Lt),
-		TransactionTime:     time.UnixMilli(swapTraces.OutVaultTrace.Transaction.Utime * 1000),
-		EventCatchTime:      time.Now(),
-		QueryId:             outVaultJson.QueryID,
-		Owner:               nil,           // Used only for referrals
-		ExitCode:            0,             // No exit code
-		Amount0Out:          big.NewInt(0), // Here we treat token0 as always IN token
-		Token0WalletAddress: tokenInWalletAddress,
-		Amount1Out:          amountOut,
-		Token1WalletAddress: tokenOutWalletAddress,
+	return &models.DedustSwapInfo{
+		TraceID:          swapTraces.Root.Transaction.Hash,
+		Lt:               lt,
+		Time:             t,
+		Sender:           sender,
+		InWalletAddress:  inWalletAddress,
+		PoolsInfo:        poolInfos,
+		OutWalletAddress: outWalletAddress,
+		OutAmount:        amountOut,
+		CatchTime:        time.Now(),
 	}, nil
 }

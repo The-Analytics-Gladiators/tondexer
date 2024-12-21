@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 	"tondexer/arbitrage"
+	"tondexer/common"
 	"tondexer/core"
 	"tondexer/dedust"
 	"tondexer/jettons"
@@ -41,6 +42,7 @@ func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, accounts []string, i
 			if err := ws.SubscribeToTransactions(accounts, nil); err != nil {
 				return err
 			}
+
 			return nil
 		})
 		if e != nil {
@@ -51,7 +53,7 @@ func subscribeToAccounts(streamingApi *tonapi.StreamingAPI, accounts []string, i
 }
 
 func swapInfoWithDex(infos []*models.SwapInfo, dex string) []core.Pair[*models.SwapInfo, string] {
-	return core.Map(infos, func(swapInfo *models.SwapInfo) core.Pair[*models.SwapInfo, string] {
+	return common.Map(infos, func(swapInfo *models.SwapInfo) core.Pair[*models.SwapInfo, string] {
 		return core.Pair[*models.SwapInfo, string]{
 			First:  swapInfo,
 			Second: dex,
@@ -101,7 +103,7 @@ func main() {
 
 	allSubscribers := append(stonfiV1Accounts, append(stonfiv2.Routers, dedust.VaultAddresses...)...)
 	log.Printf("Subscribing to %v addresses... \n", len(allSubscribers))
-	for _, chunk := range core.ChunkArray(allSubscribers, 10) {
+	for _, chunk := range common.ChunkArray(allSubscribers, 10) {
 		go subscribeToAccounts(streamingApi, chunk, incomingTransactionsChannel)
 	}
 
@@ -124,7 +126,7 @@ func main() {
 		}
 	}()
 
-	jettonInfoCacheFunction := func(wallet string) *models.ChainTokenInfo {
+	walletToMasterJettonCacheFunc := func(wallet string) *models.ChainTokenInfo {
 		master, e := walletMasterCache.Get(context.Background(), wallet)
 		if e != nil {
 			return nil
@@ -133,6 +135,15 @@ func main() {
 		info, e := jettonInfoCache.Get(context.Background(), master.(*models.WalletJetton).Master)
 		if e != nil {
 			log.Printf("Unable to get jetton info for %v \n", master.(*models.WalletJetton).Master)
+			return nil
+		}
+		return info.(*models.ChainTokenInfo)
+	}
+
+	masterJettonCacheFunc := func(master string) *models.ChainTokenInfo {
+		info, e := jettonInfoCache.Get(context.Background(), master)
+		if e != nil {
+			log.Printf("Unable to get jetton info for %v \n", master)
 			return nil
 		}
 		return info.(*models.ChainTokenInfo)
@@ -169,19 +180,26 @@ func main() {
 
 				stonfiV1Swaps := swapInfoWithDex(stonfi.ExtractStonfiSwapsFromRootTrace(trace), models.StonfiV1)
 				stonfiV2Swaps := swapInfoWithDex(stonfiv2.ExtractStonfiV2SwapsFromRootTrace(trace), models.StonfiV2)
-				dedustSwaps := swapInfoWithDex(dedust.ExtractDedustSwapsFromRootTrace(trace), models.DeDust)
 
-				swaps := append(stonfiV1Swaps, append(stonfiV2Swaps, dedustSwaps...)...)
+				dedustSwaps := dedust.ExtractDedustSwapsFromRootTrace(trace)
 
-				modelsCh = append(modelsCh, core.Map(swaps, func(pair core.Pair[*models.SwapInfo, string]) *models.SwapCH {
-					return models.ToChSwap(pair.First, pair.Second, jettonInfoCacheFunction, usdRateCacheFunction)
+				modelsCh = append(modelsCh, common.Map(stonfiV1Swaps, func(pair core.Pair[*models.SwapInfo, string]) *models.SwapCH {
+					return models.ToChSwap(pair.First, pair.Second, walletToMasterJettonCacheFunc, usdRateCacheFunction)
 				})...)
 
+				modelsCh = append(modelsCh, common.Map(stonfiV2Swaps, func(pair core.Pair[*models.SwapInfo, string]) *models.SwapCH {
+					return models.ToChSwap(pair.First, pair.Second, walletToMasterJettonCacheFunc, usdRateCacheFunction)
+				})...)
+
+				for _, dedustSwap := range dedustSwaps {
+					modelsCh = append(modelsCh, models.DedustSwapInfoToChSwap(dedustSwap, walletToMasterJettonCacheFunc, masterJettonCacheFunc, usdRateCacheFunction)...)
+				}
+
 			}
-			notNullModels := core.Filter(modelsCh, func(ch *models.SwapCH) bool {
+			notNullModels := common.Filter(modelsCh, func(ch *models.SwapCH) bool {
 				return ch != nil
 			})
-			newModels := core.Filter(notNullModels, func(ch *models.SwapCH) bool {
+			newModels := common.Filter(notNullModels, func(ch *models.SwapCH) bool {
 				contains := false
 				for _, hash := range ch.Hashes {
 					if savedToChTransactionsHashes.Exists(hash) {

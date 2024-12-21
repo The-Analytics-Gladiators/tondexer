@@ -4,6 +4,7 @@ import (
 	"github.com/tonkeeper/tonapi-go"
 	"github.com/xssnick/tonutils-go/address"
 	"log"
+	"tondexer/common"
 	"tondexer/core"
 	"tondexer/models"
 )
@@ -22,10 +23,10 @@ type StonfiV2SwapTraces struct {
 }
 
 func ExtractStonfiV2SwapsFromRootTrace(trace *tonapi.Trace) []*models.SwapInfo {
-	infos := core.Map(findSwapTraces(trace), func(t *StonfiV2SwapTraces) *models.SwapInfo {
+	infos := common.Map(findSwapTraces(trace), func(t *StonfiV2SwapTraces) *models.SwapInfo {
 		return swapTracesToSwapInfo(t)
 	})
-	return core.Filter(infos, func(info *models.SwapInfo) bool {
+	return common.Filter(infos, func(info *models.SwapInfo) bool {
 		return info != nil
 	})
 }
@@ -107,7 +108,7 @@ func findRouterTransferNotificationNodes(root *tonapi.Trace) []*tonapi.Trace {
 
 		if trace.Transaction.InMsg.IsSet() &&
 			trace.Transaction.InMsg.Value.OpCode.Value == core.JettonNotifyOpCode && // Jetton notification
-			core.Contains(trace.Interfaces, stonfiRouterV2) {
+			common.Contains(trace.Interfaces, stonfiRouterV2) {
 			traces = append(traces, trace)
 			return
 		}
@@ -126,7 +127,7 @@ func findPoolAddressForNotification(notification *tonapi.Trace) *address.Address
 	if len(children) == 0 {
 		return nil
 	}
-	if core.Contains(notification.Children[0].Interfaces, "stonfi_pool_v2") {
+	if common.Contains(notification.Children[0].Interfaces, "stonfi_pool_v2") {
 		return address.MustParseRawAddr(children[0].Transaction.Account.Address)
 	} else {
 		return nil
@@ -147,7 +148,7 @@ func findForNotification(notification *tonapi.Trace, opCode string) *tonapi.Trac
 	var traverse func(trace *tonapi.Trace)
 
 	traverse = func(trace *tonapi.Trace) {
-		if core.Contains(trace.Interfaces, stonfiRouterV2) {
+		if common.Contains(trace.Interfaces, stonfiRouterV2) {
 			if trace.Transaction.InMsg.IsSet() &&
 				trace.Transaction.InMsg.Value.DecodedOpName.Value == opCode {
 				result = trace

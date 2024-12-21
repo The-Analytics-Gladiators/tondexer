@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"math/big"
+	"tondexer/common"
 	"tondexer/core"
 	"tondexer/jettons"
 	"tondexer/models"
@@ -72,7 +73,7 @@ func tokenAmountHash(token string, amount *big.Int, decimals uint64) string {
 
 func mapWithFirstArbitrage[T any](swaps []*models.SwapCH, firstMap func(*models.SwapCH) T, secondMap func(*models.SwapCH) T) []T {
 	result := []T{firstMap(swaps[0])}
-	rest := core.Map(swaps, func(swap *models.SwapCH) T {
+	rest := common.Map(swaps, func(swap *models.SwapCH) T {
 		return secondMap(swap)
 	})
 	return append(result, rest...)
@@ -95,9 +96,9 @@ func SwapsToArbitrage(swaps []*models.SwapCH) *models.ArbitrageCH {
 		JettonSymbols:   mapWithFirstArbitrage(swaps, func(swap *models.SwapCH) string { return swap.JettonInSymbol }, func(swap *models.SwapCH) string { return swap.JettonOutSymbol }),
 		JettonUsdRates:  mapWithFirstArbitrage(swaps, func(swap *models.SwapCH) float64 { return swap.JettonInUsdRate }, func(swap *models.SwapCH) float64 { return swap.JettonOutUsdRate }),
 		JettonsDecimals: mapWithFirstArbitrage(swaps, func(swap *models.SwapCH) uint64 { return swap.JettonInDecimals }, func(swap *models.SwapCH) uint64 { return swap.JettonOutDecimals }),
-		PoolsPath:       core.Map(swaps, func(swap *models.SwapCH) string { return swap.PoolAddress }),
-		TraceIDs:        core.Map(swaps, func(swap *models.SwapCH) string { return swap.TraceID }),
-		Dexes:           core.Map(swaps, func(swap *models.SwapCH) string { return swap.Dex }),
-		Senders:         core.Map(swaps, func(swap *models.SwapCH) string { return swap.Sender }),
+		PoolsPath:       common.Map(swaps, func(swap *models.SwapCH) string { return swap.PoolAddress }),
+		TraceIDs:        common.Map(swaps, func(swap *models.SwapCH) string { return swap.TraceID }),
+		Dexes:           common.Map(swaps, func(swap *models.SwapCH) string { return swap.Dex }),
+		Senders:         common.Map(swaps, func(swap *models.SwapCH) string { return swap.Sender }),
 	}
 }

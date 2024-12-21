@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"slices"
 	"testing"
-	"tondexer/core"
+	"tondexer/common"
 	"tondexer/models"
 )
 
@@ -31,8 +31,8 @@ func TestFindRouterNotificationNodes(t *testing.T) {
 	assert.Equal(t, 2, len(notifications))
 
 	hashes := []string{"7abb04587405a0bc3047c8012653a2f9a2683c9a2de098835263fa7b1b2b9624", "3648ab7b96037d9983ef957ba019d6fdd4d5ba64fa95f790d550d49b6b4e65c3"}
-	assert.True(t, core.Contains(hashes, notifications[0].Transaction.Hash))
-	assert.True(t, core.Contains(hashes, notifications[1].Transaction.Hash))
+	assert.True(t, common.Contains(hashes, notifications[0].Transaction.Hash))
+	assert.True(t, common.Contains(hashes, notifications[1].Transaction.Hash))
 }
 
 func TestFindPaymentForNotification(t *testing.T) {
@@ -58,8 +58,8 @@ func TestFindPaymentForNotification(t *testing.T) {
 	assert.Equal(t, 2, len(payments))
 
 	hashes := []string{"7bed7e6f09a8dc73b5a05f0ab2004ce18c76d49f2c1c63d07a767a7ab1b3871c", "c666610443281d4395e101fdc70f157ea9fd907da38c1350c3f57d28a492ac97"}
-	assert.True(t, core.Contains(hashes, payments[0].Transaction.Hash))
-	assert.True(t, core.Contains(hashes, payments[1].Transaction.Hash))
+	assert.True(t, common.Contains(hashes, payments[0].Transaction.Hash))
+	assert.True(t, common.Contains(hashes, payments[1].Transaction.Hash))
 }
 
 func TestFindPoolAddressForNotification(t *testing.T) {

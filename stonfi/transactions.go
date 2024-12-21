@@ -6,7 +6,7 @@ import (
 	"github.com/xssnick/tonutils-go/tlb"
 	"log"
 	"slices"
-	"tondexer/core"
+	"tondexer/common"
 	"tondexer/models"
 )
 
@@ -41,11 +41,11 @@ func ExtractStonfiSwapsFromRootTrace(trace *tonapi.Trace) []*models.SwapInfo {
 	}
 	findNextSwap(trace)
 
-	stonfiSwaps := core.Map(swaps, func(re RelatedEvents[tonapi.Trace, tonapi.Trace]) *models.SwapInfo {
+	stonfiSwaps := common.Map(swaps, func(re RelatedEvents[tonapi.Trace, tonapi.Trace]) *models.SwapInfo {
 		return relatedEventsToSwapInfo(re, trace)
 	})
 
-	return core.Filter(stonfiSwaps, func(swap *models.SwapInfo) bool { return swap != nil })
+	return common.Filter(stonfiSwaps, func(swap *models.SwapInfo) bool { return swap != nil })
 }
 
 func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Trace], root *tonapi.Trace) *models.SwapInfo {
@@ -66,13 +66,13 @@ func relatedEventsToSwapInfo(relatedEvents RelatedEvents[tonapi.Trace, tonapi.Tr
 		return nil
 	}
 
-	allPayments := core.Map(relatedEvents.Payments, func(trace *tonapi.Trace) *models.PayoutRequest {
+	allPayments := common.Map(relatedEvents.Payments, func(trace *tonapi.Trace) *models.PayoutRequest {
 		if request, e := PaymentRequestFromTrace(trace); e == nil {
 			return request
 		}
 		return nil
 	})
-	allPayments = core.Filter(allPayments, func(payment *models.PayoutRequest) bool { return payment != nil })
+	allPayments = common.Filter(allPayments, func(payment *models.PayoutRequest) bool { return payment != nil })
 
 	paymentIndex := slices.IndexFunc(allPayments, func(request *models.PayoutRequest) bool {
 		return request.ExitCode == SwapOkPaymentCode
